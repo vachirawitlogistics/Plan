@@ -4,14 +4,22 @@ async function callAPI(action, payload = {}) {
     try {
         const response = await fetch(API_URL, {
             method: 'POST',
-            redirect: 'follow', // เพิ่มบรรทัดนี้
+            redirect: 'follow',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ action: action, payload: payload })
         });
-        return await response.json();
+        
+        const result = await response.json();
+        
+        // ดักจับกรณีติดคิว หรือมี Error จาก Backend
+        if (result && result.success === false && result.message) {
+            throw new Error(result.message);
+        }
+        
+        return result;
     } catch (error) {
         console.error('API Error:', error);
-        return { success: false, message: error.toString() };
+        return { success: false, message: error.message || error.toString() };
     }
 }
 
