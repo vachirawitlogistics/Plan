@@ -4,7 +4,8 @@ async function callAPI(action, payload = {}) {
     try {
         const response = await fetch(API_URL, {
             method: 'POST',
-            // ลบบรรทัด redirect: 'follow' ทิ้งไปเลย
+            redirect: 'follow',
+            credentials: 'omit',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ action: action, payload: payload })
         });
