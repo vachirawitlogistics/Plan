@@ -4,14 +4,13 @@ async function callAPI(action, payload = {}) {
     try {
         const response = await fetch(API_URL, {
             method: 'POST',
-            redirect: 'follow',
+            // ลบบรรทัด redirect: 'follow' ทิ้งไปเลย
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ action: action, payload: payload })
         });
         
         const result = await response.json();
         
-        // ดักจับกรณีติดคิว หรือมี Error จาก Backend
         if (result && result.success === false && result.message) {
             throw new Error(result.message);
         }
