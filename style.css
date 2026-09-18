@@ -135,15 +135,16 @@ thead th.sticky-col-right { background-color: #1e293b !important; z-index: 11 !i
 #mainApp { display: none; }
 .sort-icon { font-size: 0.8rem; margin-left: 5px; opacity: 0.5; }
 
-/* =========================================
-   🚛 Login Section 2026 Redesign (Glassmorphism + Mesh)
-   ========================================= */
 .login-wrapper {
   position: fixed;
-  top: 0; left: 0; width: 100%; height: 100%;
+  top: 0; left: 0; 
+  width: 100vw; height: 100vh;
   z-index: 9999;
   background-color: #0f172a;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .mesh-bg {
   position: absolute;
@@ -231,7 +232,6 @@ thead th.sticky-col-right { background-color: #1e293b !important; z-index: 11 !i
 }
 @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
 
-/* 📱 Mobile adjustments */
 @media (max-width: 768px) {
   body { padding: 10px 5px; } 
   h3 { font-size: 1.3rem !important; }

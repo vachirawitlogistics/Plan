@@ -28,31 +28,27 @@
 <datalist id="typeList"><option value="20'"><option value="40'"><option value="40HQ"></datalist>
 <datalist id="fuelRuleList"><option value="1"><option value="15"><option value="เฉลี่ยเดือน"><option value="เฉลี่ยครึ่ง"></datalist>
 
-<!-- 2026 Redesigned Login Section -->
 <div id="loginSection" class="login-wrapper" style="display: none;">
   <div class="mesh-bg"></div>
-  <div class="container d-flex justify-content-center align-items-center min-vh-100 position-relative z-1">
-    <div class="card login-card p-4 p-md-5 text-center fade-in-up">
-      <div class="truck-icon-wrapper mb-4 mx-auto">
-        <i class="bi bi-truck text-white fs-1"></i>
-      </div>
-      <h2 class="mb-2 fw-bold text-gradient-2026">Nexus Logistics</h2>
-      <p class="text-secondary mb-4 small fw-medium">Unified Booking OS // 2026</p>
-
-      <div class="input-group mb-4 login-input-group shadow-sm">
-        <span class="input-group-text bg-transparent border-end-0 ps-4">
-            <i class="bi bi-fingerprint text-primary fs-5"></i>
-        </span>
-        <input type="password" id="loginPassword" class="form-control form-control-lg border-start-0 shadow-none text-center fw-bold" placeholder="AUTH KEY..." onkeypress="if(event.key === 'Enter') doLogin()">
-      </div>
-      <button class="btn btn-login-2026 btn-lg w-100 fw-bold rounded-pill shadow" onclick="doLogin()" id="btnLogin">
-        <span><i class="bi bi-box-arrow-in-right me-2"></i> INITIALIZE</span>
-      </button>
+  <div class="login-card p-4 p-md-5 text-center fade-in-up position-relative z-1">
+    <div class="truck-icon-wrapper mb-4 mx-auto">
+      <i class="bi bi-truck text-white fs-1"></i>
     </div>
+    <h2 class="mb-2 fw-bold text-gradient-2026">Nexus Logistics</h2>
+    <p class="text-secondary mb-4 small fw-medium">Unified Booking OS // 2026</p>
+
+    <div class="input-group mb-4 login-input-group shadow-sm">
+      <span class="input-group-text bg-transparent border-end-0 ps-4">
+          <i class="bi bi-fingerprint text-primary fs-5"></i>
+      </span>
+      <input type="password" id="loginPassword" class="form-control form-control-lg border-start-0 shadow-none text-center fw-bold" placeholder="AUTH KEY..." onkeypress="if(event.key === 'Enter') doLogin()">
+    </div>
+    <button class="btn btn-login-2026 btn-lg w-100 fw-bold rounded-pill shadow" onclick="doLogin()" id="btnLogin">
+      <span><i class="bi bi-box-arrow-in-right me-2"></i> INITIALIZE</span>
+    </button>
   </div>
 </div>
 
-<!-- Main App -->
 <div id="mainApp" class="container-fluid slide-up">
   
   <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center mb-3 mt-2 gap-3">
@@ -126,7 +122,7 @@
       </button>
 
       <div class="d-flex gap-2">
-        <button class="btn btn-light rounded-circle shadow-sm btn-add-action icon-btn border" onclick="loadData(); loadCustomerList(); loadPricingData();" title="รีเฟรชข้อมูล">
+        <button class="btn btn-light rounded-circle shadow-sm btn-add-action icon-btn border" onclick="loadData(false); loadCustomerList(); loadPricingData();" title="รีเฟรชข้อมูล">
           <i class="bi bi-arrow-clockwise text-secondary"></i>
         </button>
         <button class="btn btn-light rounded-circle shadow-sm btn-add-action icon-btn border border-danger text-danger" onclick="logout()" title="ออกจากระบบ">
@@ -235,10 +231,6 @@
     </div>
   </div>
 </div>
-
-<!-- ========================================= -->
-<!-- MODALS SECTION -->
-<!-- ========================================= -->
 
 <div class="modal fade" id="pricingMasterModal" data-bs-backdrop="static">
   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">

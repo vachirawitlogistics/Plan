@@ -34,7 +34,9 @@ let mappedPlacesGlobal = [];
 let customerMapGlobal = {}; 
 const SESSION_DURATION = 4 * 60 * 60 * 1000;
 const RUNNING_STATUSES = ['จัดรถแล้ว', 'กำลังไปรับตู้', 'ดรอปตู้ (รอบรรจุ)', 'กำลังบรรจุ/เปิดตู้', 'ดรอปตู้ (รอคืน)', 'กำลังไปคืนตู้', 'คืนตู้แล้ว'];
+
 let filterTimeout; 
+let backgroundSyncInterval; 
 
 window.onload = function() {
   const storedUser = localStorage.getItem('csName'); 
@@ -46,7 +48,7 @@ window.onload = function() {
     localStorage.removeItem('csName'); 
     localStorage.removeItem('loginTimestamp');
     document.getElementById('mainApp').style.display = 'none';
-    document.getElementById('loginSection').style.display = 'block';
+    document.getElementById('loginSection').style.display = 'flex';
   }
 };
 
@@ -82,6 +84,7 @@ function showMainApp() {
   loadCustomerData(); 
   loadDropdownSettings(); 
   loadPricingData(); 
+  startBackgroundSync(); 
 }
 
 function doLogin() {
@@ -104,16 +107,78 @@ function doLogin() {
 }
 
 function logout() { 
+    clearInterval(backgroundSyncInterval); 
     localStorage.removeItem('csName'); 
     localStorage.removeItem('loginTimestamp'); 
+    localStorage.removeItem('bookingDataCache'); 
     currentUser = '';
     document.getElementById('loginPassword').value = '';
     document.getElementById('mainApp').style.display = 'none';
-    document.getElementById('loginSection').style.display = 'block';
+    document.getElementById('loginSection').style.display = 'flex';
 }
 
 function showGlobalLoading(title = 'กำลังดำเนินการ...') { 
     Swal.fire({ title: title, allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } }); 
+}
+
+function startBackgroundSync() {
+    clearInterval(backgroundSyncInterval);
+    backgroundSyncInterval = setInterval(() => {
+        if (currentUser && document.getElementById('mainApp').style.display !== 'none') {
+            loadData(true); 
+        }
+    }, 45000); 
+}
+
+function loadData(silent = false) {
+  if (!silent) {
+      let cached = localStorage.getItem('bookingDataCache');
+      if (cached) {
+          allData = JSON.parse(cached);
+          applyFilters(); 
+      } else {
+          document.getElementById('tableBody').innerHTML = '<tr><td colspan="30" class="text-center py-5 text-muted"><div class="spinner-border text-primary"></div><br>กำลังดึงข้อมูล...</td></tr>';
+      }
+  }
+
+  callAPI('getBookings').then(data => { 
+      if (!data || data.length <= 1) {
+          allData = data || [];
+          renderTable([]); 
+          updateDashboard([]);
+          return;
+      }
+
+      const headerRow = data[0];
+      let dataRows = data.slice(1);
+      
+      dataRows.sort((a, b) => {
+          let d1 = new Date(a[0]);
+          let d2 = new Date(b[0]);
+          return d2 - d1;
+      });
+
+      let newData = [headerRow, ...dataRows]; 
+      
+      if (silent) {
+          let oldHash = JSON.stringify(allData);
+          let newHash = JSON.stringify(newData);
+          if (oldHash === newHash) return; 
+          
+          const Toast = Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+          Toast.fire({ icon: 'info', title: '🔄 มีการอัปเดตข้อมูลใหม่จากระบบ' });
+      }
+
+      allData = newData;
+      localStorage.setItem('bookingDataCache', JSON.stringify(allData)); 
+      
+      let uniqueCS = [...new Set(allData.slice(1).map(row => row[1]).filter(String))];
+      let csOptions = '';
+      uniqueCS.forEach(cs => { csOptions += `<option value="${cs}">`; });
+      document.getElementById('csDataList').innerHTML = csOptions;
+      
+      applyFilters(); 
+  });
 }
 
 function loadCustomerData() {
@@ -260,7 +325,7 @@ function autoUpdatePricesAfterFuelChange() {
         
         callAPI('updateBatchPrices', { payload: updates, user: currentUser }).then(res => {
             if(res.success) {
-                loadData(); 
+                loadData(true); 
                 Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จและอัปเดตราคาตู้เรียบร้อย!', timer: 2000, showConfirmButton: false });
             } else {
                 Swal.fire({ icon: 'error', text: res.message });
@@ -392,36 +457,6 @@ function openLogModal() {
           html += `<tr><td class="text-muted small">${dateFormatted}</td><td class="fw-bold text-primary">${row[1] || '-'}</td><td><span class="badge bg-info text-dark">${row[2] || '-'}</span></td><td class="small text-wrap">${row[3] || '-'}</td></tr>`;
       });
       document.getElementById('logTableBody').innerHTML = html;
-  });
-}
-
-function loadData() {
-  document.getElementById('tableBody').innerHTML = '<tr><td colspan="30" class="text-center py-5 text-muted"><div class="spinner-border text-primary"></div><br>กำลังดึงข้อมูล...</td></tr>';
-  callAPI('getBookings').then(data => { 
-      if (!data || data.length <= 1) {
-          allData = data || [];
-          renderTable([]); 
-          updateDashboard([]);
-          return;
-      }
-
-      const headerRow = data[0];
-      let dataRows = data.slice(1);
-      
-      dataRows.sort((a, b) => {
-          let d1 = new Date(a[0]);
-          let d2 = new Date(b[0]);
-          return d2 - d1;
-      });
-
-      allData = [headerRow, ...dataRows]; 
-      
-      let uniqueCS = [...new Set(allData.slice(1).map(row => row[1]).filter(String))];
-      let csOptions = '';
-      uniqueCS.forEach(cs => { csOptions += `<option value="${cs}">`; });
-      document.getElementById('csDataList').innerHTML = csOptions;
-      
-      applyFilters(); 
   });
 }
 
@@ -665,7 +700,7 @@ function saveBatchTruckMulti() {
 
   showGlobalLoading('กำลังบันทึก...');
   callAPI('updateBatchTruckMulti', { truckDataArray: payload, user: currentUser }).then(res => {
-    if (res.success) { bootstrap.Modal.getInstance(document.getElementById('batchTruckModal')).hide(); loadData(); Swal.fire({ icon: 'success', title: 'สำเร็จ!', timer: 1500, showConfirmButton: false }); } 
+    if (res.success) { bootstrap.Modal.getInstance(document.getElementById('batchTruckModal')).hide(); loadData(true); Swal.fire({ icon: 'success', title: 'สำเร็จ!', timer: 1500, showConfirmButton: false }); } 
     else { Swal.fire({ icon: 'error', text: res.message }); }
   });
 }
@@ -958,7 +993,7 @@ function updatePriceEntireBooking() {
                 callAPI('updateBatchPrices', { payload: updates, user: currentUser }).then(res => {
                     if(res.success) {
                         autoCalcEditPrice(); 
-                        loadData(); 
+                        loadData(true); 
                         Swal.fire({ icon: 'success', title: 'อัปเดตราคาสำเร็จ!', timer: 1500, showConfirmButton: false });
                     } else { Swal.fire('Error', res.message, 'error'); }
                 });
@@ -1088,7 +1123,7 @@ function saveData() {
   callAPI('saveMultipleBookings', { dataArray: dataArray }).then(res => {
     if (res.success) { 
         bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); 
-        clearForm(); loadData(); loadCustomerData(); 
+        clearForm(); loadData(true); loadCustomerData(); 
         Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ!', timer: 1500, showConfirmButton: false }); 
     } else { Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.message }); }
   });
@@ -1227,7 +1262,7 @@ function saveEdit() {
   callAPI('updateSingleRow', { rowNumber: rowNum, rowData: updatedData, user: currentUser }).then(res => {
     if (res.success) { 
         bootstrap.Modal.getInstance(document.getElementById('editModal')).hide(); 
-        loadData(); loadCustomerData(); 
+        loadData(true); loadCustomerData(); 
         Swal.fire({ icon: 'success', title: 'อัปเดตสำเร็จ!', timer: 1500, showConfirmButton: false }); 
     } else { Swal.fire({ icon: 'error', text: res.message }); }
   });
@@ -1280,7 +1315,7 @@ function finishEntireBooking() {
             callAPI('saveAndFinishBookingBatch', { rowNumber: rowNum, rowData: updatedData, bookingNo: bkgNo, user: currentUser }).then(res => {
                 if(res.success) {
                     bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
-                    loadData();
+                    loadData(true);
                     Swal.fire({ icon: 'success', title: 'สำเร็จ!', text: res.message, timer: 2000, showConfirmButton: false });
                 } else { Swal.fire('เกิดข้อผิดพลาด', res.message, 'error'); }
             });
@@ -1300,7 +1335,7 @@ function deleteSingle() {
     if (result.isConfirmed) {
       showGlobalLoading('กำลังลบข้อมูล...');
       callAPI('deleteSingleRow', { rowNumber: parseInt(document.getElementById('eRowIndex').value), user: currentUser, bkgNo: bkgNo }).then(res => {
-        if (res.success) { bootstrap.Modal.getInstance(document.getElementById('editModal')).hide(); loadData(); Swal.fire({ icon: 'success', timer: 1500, showConfirmButton: false }); }
+        if (res.success) { bootstrap.Modal.getInstance(document.getElementById('editModal')).hide(); loadData(true); Swal.fire({ icon: 'success', timer: 1500, showConfirmButton: false }); }
       });
     }
   });
@@ -1357,7 +1392,7 @@ function confirmDeleteBooking(bkgNo) {
     if (result.isConfirmed) {
       showGlobalLoading(`กำลังลบ Booking: ${bkgNo}...`);
       callAPI('deleteByBooking', { bookingNo: bkgNo, user: currentUser }).then(res => {
-        if (res.success) { bootstrap.Modal.getInstance(document.getElementById('deleteBookingModal')).hide(); loadData(); Swal.fire({ icon: 'success', title: 'ลบสำเร็จ!', timer: 1500, showConfirmButton: false }); } 
+        if (res.success) { bootstrap.Modal.getInstance(document.getElementById('deleteBookingModal')).hide(); loadData(true); Swal.fire({ icon: 'success', title: 'ลบสำเร็จ!', timer: 1500, showConfirmButton: false }); } 
         else { Swal.fire({ icon: 'error', text: res.message }); }
       });
     }
