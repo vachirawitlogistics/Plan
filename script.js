@@ -1,14 +1,9 @@
-// =========================================
-// 🌐 ตั้งค่า API Endpoint สำหรับติดต่อกับ Backend
-// =========================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbxzkr11tVpacSZ2xXkwBDigM-tt9_7eX5t6Pwoc46-Jeug9LD3UGnetD6NRfvgxVlCK/exec';
 
-// ฟังก์ชัน Helper สำหรับยิง API ไปยัง Google Apps Script
 async function callAPI(action, payload = {}) {
     try {
         const response = await fetch(API_URL, {
             method: 'POST',
-            // ใช้ text/plain เพื่อหลีกเลี่ยงปัญหา CORS Preflight ใน Google Apps Script
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ action: action, payload: payload })
         });
@@ -19,10 +14,6 @@ async function callAPI(action, payload = {}) {
     }
 }
 
-// =========================================
-// 🧩 ระบบพื้นฐาน
-// =========================================
-
 document.addEventListener('focusin', function (e) {
   if (e.target.closest && e.target.closest('.swal2-container')) {
       e.stopImmediatePropagation();
@@ -32,7 +23,6 @@ document.addEventListener('focusin', function (e) {
 let currentUser = ''; 
 let allData = [];
 let filteredData = []; 
- 
 let currentSortCol = 0; 
 let sortAsc = false; 
 let currentPage = 1; 
@@ -41,12 +31,10 @@ let fuelHistory = [];
 let pricingRules = [];
 let zoneMapping = {}; 
 let mappedPlacesGlobal = []; 
- 
 let customerMapGlobal = {}; 
- 
 const SESSION_DURATION = 4 * 60 * 60 * 1000;
-
 const RUNNING_STATUSES = ['จัดรถแล้ว', 'กำลังไปรับตู้', 'ดรอปตู้ (รอบรรจุ)', 'กำลังบรรจุ/เปิดตู้', 'ดรอปตู้ (รอคืน)', 'กำลังไปคืนตู้', 'คืนตู้แล้ว'];
+let filterTimeout; 
 
 window.onload = function() {
   const storedUser = localStorage.getItem('csName'); 
@@ -100,7 +88,7 @@ function doLogin() {
   const pwd = document.getElementById('loginPassword').value; 
   const btn = document.getElementById('btnLogin');
   if (!pwd) { Swal.fire({ icon: 'warning', title: 'แจ้งเตือน', text: 'กรุณากรอกรหัสผ่าน' }); return; }
-  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังตรวจสอบ...'; 
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> CONNECTING...'; 
   btn.disabled = true;
 
   callAPI('verifyLogin', { password: pwd }).then(res => {
@@ -109,8 +97,8 @@ function doLogin() {
       localStorage.setItem('csName', currentUser); 
       localStorage.setItem('loginTimestamp', new Date().getTime().toString()); 
       showMainApp(); 
-    } else { Swal.fire({ icon: 'error', title: 'เข้าสู่ระบบล้มเหลว', text: res.message }); }
-    btn.innerHTML = '<span><i class="bi bi-box-arrow-in-right me-2"></i>เข้าสู่ระบบ</span>'; 
+    } else { Swal.fire({ icon: 'error', title: 'Access Denied', text: res.message }); }
+    btn.innerHTML = '<span><i class="bi bi-box-arrow-in-right me-2"></i> INITIALIZE</span>'; 
     btn.disabled = false;
   });
 }
@@ -127,10 +115,6 @@ function logout() {
 function showGlobalLoading(title = 'กำลังดำเนินการ...') { 
     Swal.fire({ title: title, allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } }); 
 }
-
-// =========================================
-// 🚀 ฟังก์ชันดึงข้อมูล (Load Data)
-// =========================================
 
 function loadCustomerData() {
   callAPI('getCustomerData').then(res => {
@@ -195,10 +179,6 @@ function loadPricingData(callback) {
       if(callback) callback();
   });
 }
-
-// =========================================
-// ⛽ การจัดการราคาและน้ำมัน (Pricing & Fuel)
-// =========================================
 
 function openPricingMasterModal() {
     document.getElementById('fuelMonthFilter').value = '';
@@ -355,6 +335,11 @@ function deleteFuelRecord(row) {
     });
 }
 
+function debouncedFilterPricingTable() {
+    clearTimeout(filterTimeout);
+    filterTimeout = setTimeout(() => { renderPricingRulesTable(); }, 400);
+}
+
 function renderPricingRulesTable() {
     let filterText = (document.getElementById('searchRule') ? document.getElementById('searchRule').value.toLowerCase() : '');
     let tbody = '';
@@ -377,8 +362,6 @@ function renderPricingRulesTable() {
     }
     document.getElementById('pricingRulesBody').innerHTML = tbody;
 }
-
-function filterPricingTable() { renderPricingRulesTable(); }
 
 function addNewSetting(type) {
   Swal.fire({
@@ -411,10 +394,6 @@ function openLogModal() {
       document.getElementById('logTableBody').innerHTML = html;
   });
 }
-
-// =========================================
-// 📊 จัดการตารางข้อมูลหลัก (Main Table & Filter)
-// =========================================
 
 function loadData() {
   document.getElementById('tableBody').innerHTML = '<tr><td colspan="30" class="text-center py-5 text-muted"><div class="spinner-border text-primary"></div><br>กำลังดึงข้อมูล...</td></tr>';
@@ -476,29 +455,39 @@ function sortTable(colIndex) {
   const headerRow = filteredData[0];
   let dataRows = filteredData.slice(1);
   if (currentSortCol === colIndex) { sortAsc = !sortAsc; } else { currentSortCol = colIndex; sortAsc = true; }
-  dataRows.sort((a, b) => {
-    let valA = a[colIndex] ? a[colIndex].toString().toLowerCase() : '';
-    let valB = b[colIndex] ? b[colIndex].toString().toLowerCase() : '';
-    if (!isNaN(Date.parse(valA)) && !isNaN(Date.parse(valB))) { valA = new Date(valA); valB = new Date(valB); } 
-    if (valA < valB) return sortAsc ? -1 : 1;
-    if (valA > valB) return sortAsc ? 1 : -1;
-    return 0;
-  });
-  filteredData = [headerRow, ...dataRows];
-  currentPage = 1;
-  renderTable(filteredData); 
+  
+  document.getElementById('tableBody').innerHTML = '<tr><td colspan="30" class="text-center py-5 text-muted"><div class="spinner-border text-primary"></div><br>กำลังจัดเรียงข้อมูล...</td></tr>';
+  
+  setTimeout(() => {
+      dataRows.sort((a, b) => {
+        let valA = a[colIndex] ? a[colIndex].toString().toLowerCase() : '';
+        let valB = b[colIndex] ? b[colIndex].toString().toLowerCase() : '';
+        if (!isNaN(Date.parse(valA)) && !isNaN(Date.parse(valB))) { valA = new Date(valA); valB = new Date(valB); } 
+        if (valA < valB) return sortAsc ? -1 : 1;
+        if (valA > valB) return sortAsc ? 1 : -1;
+        return 0;
+      });
+      filteredData = [headerRow, ...dataRows];
+      currentPage = 1;
+      renderTable(filteredData); 
+  }, 50);
 }
 
 function changePage(step) {
   let pageSizeVal = document.getElementById('pageSize').value;
   if (pageSizeVal === 'all') return;
-  let limit = parseInt(pageSizeVal);
-  let totalRows = filteredData.length - 1;
-  let totalPages = Math.ceil(totalRows / limit) || 1;
-  currentPage += step;
-  if (currentPage < 1) currentPage = 1;
-  if (currentPage > totalPages) currentPage = totalPages;
-  renderTable(filteredData);
+  
+  document.getElementById('tableBody').innerHTML = '<tr><td colspan="30" class="text-center py-5 text-muted"><div class="spinner-border text-primary"></div><br>กำลังโหลดข้อมูล...</td></tr>';
+  
+  setTimeout(() => {
+      let limit = parseInt(pageSizeVal);
+      let totalRows = filteredData.length - 1;
+      let totalPages = Math.ceil(totalRows / limit) || 1;
+      currentPage += step;
+      if (currentPage < 1) currentPage = 1;
+      if (currentPage > totalPages) currentPage = totalPages;
+      renderTable(filteredData);
+  }, 10);
 }
 
 function renderTable(dataArray) {
@@ -681,6 +670,12 @@ function saveBatchTruckMulti() {
   });
 }
 
+function debouncedApplyFilters() {
+    clearTimeout(filterTimeout);
+    document.getElementById('tableBody').innerHTML = '<tr><td colspan="30" class="text-center py-5 text-muted"><div class="spinner-border text-primary"></div><br>กำลังประมวลผลข้อมูล...</td></tr>';
+    filterTimeout = setTimeout(() => { applyFilters(); }, 400);
+}
+
 function applyFilters() {
   if (!allData || allData.length <= 1) {
       renderTable([]);
@@ -825,32 +820,24 @@ function getActiveFuel(ruleStr, bDateStr) {
         return latestPrice;
     };
 
-    if (r === '1') {
-        targetDate = new Date(bDate.getFullYear(), bDate.getMonth(), 1);
-    } 
+    if (r === '1') { targetDate = new Date(bDate.getFullYear(), bDate.getMonth(), 1); } 
     else if (r === '15') {
-        if (bDate.getDate() >= 15) { targetDate = new Date(bDate.getFullYear(), bDate.getMonth(), 15);
-        } else { targetDate = new Date(bDate.getFullYear(), bDate.getMonth() - 1, 15); }
+        if (bDate.getDate() >= 15) { targetDate = new Date(bDate.getFullYear(), bDate.getMonth(), 15); } 
+        else { targetDate = new Date(bDate.getFullYear(), bDate.getMonth() - 1, 15); }
     } 
     else if (r.includes('half') || r.includes('ครึ่ง')) {
         let startDate;
-        if (bDate.getDate() <= 15) { startDate = new Date(bDate.getFullYear(), bDate.getMonth(), 1);
-        } else { startDate = new Date(bDate.getFullYear(), bDate.getMonth(), 16); }
+        if (bDate.getDate() <= 15) { startDate = new Date(bDate.getFullYear(), bDate.getMonth(), 1); } 
+        else { startDate = new Date(bDate.getFullYear(), bDate.getMonth(), 16); }
         
         let sum = 0; let count = 0;
-        for (let d = new Date(startDate); d <= bDate; d.setDate(d.getDate() + 1)) {
-            sum += getPriceOnDay(d);
-            count++;
-        }
+        for (let d = new Date(startDate); d <= bDate; d.setDate(d.getDate() + 1)) { sum += getPriceOnDay(d); count++; }
         if(count > 0) return sum / count;
     }
     else if (r.includes('average') || r.includes('เฉลี่ย')) {
         let startDate = new Date(bDate.getFullYear(), bDate.getMonth(), 1);
         let sum = 0; let count = 0;
-        for (let d = new Date(startDate); d <= bDate; d.setDate(d.getDate() + 1)) {
-            sum += getPriceOnDay(d);
-            count++;
-        }
+        for (let d = new Date(startDate); d <= bDate; d.setDate(d.getDate() + 1)) { sum += getPriceOnDay(d); count++; }
         if(count > 0) return sum / count;
     }
     return getPriceOnDay(targetDate); 
@@ -867,13 +854,10 @@ function getMatchedPrice(customer, type, cyPlace, loadPlace, rtnPlace, bDateStr,
     for(let r of pricingRules) {
         if (!isModeMatch(r.sheetName, currentMode)) continue;
         let rTypeSafe = (r.type || '').toLowerCase().replace(/'/g, ''); 
-        
         let ruleCustShort = (r.customer || '').trim();
         let ruleCustFull = (customerMapGlobal[ruleCustShort] || ruleCustShort).trim();
-        
         let isCustomerMatch = (ruleCustShort.toLowerCase() === inputCustomer || ruleCustFull.toLowerCase() === inputCustomer || ruleCustShort === '');
         let isTypeMatch = (rTypeSafe === safeType || rTypeSafe === '');
-        
         let ruleCy = (r.cyPlace || '').toLowerCase();
         let ruleLoad = (r.loadPlace || '').toLowerCase();
         let ruleRtn = (r.rtnPlace || '').toLowerCase();
@@ -958,9 +942,7 @@ function updatePriceEntireBooking() {
             let newPrice = getMatchedPrice(customer, type, cyPlace, loadPlace, rtnPlace, bDateStr, modeVal);
             let rowNum = r[r.length - 1]; 
             
-            if(newPrice > 0) {
-                updates.push({ row: rowNum, newPrice: newPrice });
-            }
+            if(newPrice > 0) { updates.push({ row: rowNum, newPrice: newPrice }); }
         }
     }
 
@@ -969,10 +951,7 @@ function updatePriceEntireBooking() {
             title: 'อัปเดตราคาทั้ง Booking?',
             html: `ระบบจะคำนวณและปรับราคาใหม่ให้กับตู้ <b>${updates.length} ใบ</b><br>ใน Booking: <b class="text-primary">${bkgNo}</b>`,
             icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#10b981',
-            confirmButtonText: 'ใช่, อัปเดตเลย',
-            cancelButtonText: 'ยกเลิก'
+            showCancelButton: true, confirmButtonColor: '#10b981', confirmButtonText: 'ใช่, อัปเดตเลย', cancelButtonText: 'ยกเลิก'
         }).then(res => {
             if(res.isConfirmed) {
                 showGlobalLoading('กำลังอัปเดตราคาทั้ง Booking...');
@@ -981,9 +960,7 @@ function updatePriceEntireBooking() {
                         autoCalcEditPrice(); 
                         loadData(); 
                         Swal.fire({ icon: 'success', title: 'อัปเดตราคาสำเร็จ!', timer: 1500, showConfirmButton: false });
-                    } else {
-                        Swal.fire('Error', res.message, 'error');
-                    }
+                    } else { Swal.fire('Error', res.message, 'error'); }
                 });
             }
         });
@@ -995,7 +972,6 @@ function updatePriceEntireBooking() {
 function generateRows() {
   const q20 = parseInt(document.getElementById('qty20').value) || 0; 
   const q40 = parseInt(document.getElementById('qty40').value) || 0;
-  
   const mPrice20 = parseFloat(document.getElementById('manualPrice20').value) || 0;
   const mPrice40 = parseFloat(document.getElementById('manualPrice40').value) || 0;
 
@@ -1089,9 +1065,7 @@ function saveData() {
     let plate = r.querySelector('.cTruckPlate').value.trim();
     let container = r.querySelector('.cContainerNo').value.trim();
     
-    if(isChecked && (!plate || !container)) {
-        hasError = true;
-    }
+    if(isChecked && (!plate || !container)) { hasError = true; }
 
     dataArray.push([ 
         document.getElementById('date').value, currentUser, r.querySelector('.cType').value, document.getElementById('mode').value, customer, loadPlace, bkg, 
@@ -1299,10 +1273,7 @@ function finishEntireBooking() {
         title: 'ยืนยันจบงานรวดเดียว?',
         html: `ระบบจะเซฟข้อมูลตู้ใบนี้และเปลี่ยนสถานะตู้ทั้งหมดใน<br><b class="text-primary">${bkgNo}</b> เป็น <b class="text-success">"จบงานรอวางบิล"</b> หรือไม่?`,
         icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#10b981',
-        confirmButtonText: '<i class="bi bi-check2-all"></i> ใช่, จบงานรวดเดียว!',
-        cancelButtonText: 'ยกเลิก'
+        showCancelButton: true, confirmButtonColor: '#10b981', confirmButtonText: '<i class="bi bi-check2-all"></i> ใช่, จบงานรวดเดียว!', cancelButtonText: 'ยกเลิก'
     }).then(res => {
         if(res.isConfirmed) {
             showGlobalLoading('กำลังบันทึกและเปลี่ยนสถานะทั้ง Booking...');
@@ -1311,9 +1282,7 @@ function finishEntireBooking() {
                     bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
                     loadData();
                     Swal.fire({ icon: 'success', title: 'สำเร็จ!', text: res.message, timer: 2000, showConfirmButton: false });
-                } else {
-                    Swal.fire('เกิดข้อผิดพลาด', res.message, 'error');
-                }
+                } else { Swal.fire('เกิดข้อผิดพลาด', res.message, 'error'); }
             });
         }
     });
@@ -1370,13 +1339,16 @@ function openDeleteBookingModal() {
   new bootstrap.Modal(document.getElementById('deleteBookingModal')).show();
 }
 
-function filterDeleteModal() {
-  let input = document.getElementById("searchDeleteModal").value.toLowerCase();
-  let rows = document.querySelectorAll(".delete-row-item");
-  rows.forEach(row => {
-      let text = row.innerText.toLowerCase();
-      row.style.display = text.includes(input) ? "" : "none";
-  });
+function debouncedFilterDeleteModal() {
+    clearTimeout(filterTimeout);
+    filterTimeout = setTimeout(() => {
+        let input = document.getElementById("searchDeleteModal").value.toLowerCase();
+        let rows = document.querySelectorAll(".delete-row-item");
+        rows.forEach(row => {
+            let text = row.innerText.toLowerCase();
+            row.style.display = text.includes(input) ? "" : "none";
+        });
+    }, 400);
 }
 
 function confirmDeleteBooking(bkgNo) {
@@ -1414,10 +1386,6 @@ function showCSBreakdown(type) {
   Swal.fire({ title: `<span style="color: ${iconColor};"><i class="bi bi-bar-chart-line-fill"></i> ${title}</span>`, html: htmlContent, width: 500, showConfirmButton: true, confirmButtonText: 'ปิดหน้าต่าง', confirmButtonColor: '#6c757d', customClass: { title: 'fs-4 fw-bold' } });
 }
 
-// =========================================
-// 👥 ฟังก์ชันจัดการหน้าต่างลูกค้า (Customer CRUD)
-// =========================================
-
 let rawCustomers = [];
 
 function openCustomerModal() {
@@ -1433,6 +1401,11 @@ function loadCustomerTable() {
       rawCustomers = data;
       renderCustomerTable();
   });
+}
+
+function debouncedRenderCustomerTable() {
+    clearTimeout(filterTimeout);
+    filterTimeout = setTimeout(() => { renderCustomerTable(); }, 400);
 }
 
 function renderCustomerTable() {
