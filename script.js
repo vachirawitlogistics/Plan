@@ -4,6 +4,7 @@ async function callAPI(action, payload = {}) {
     try {
         const response = await fetch(API_URL, {
             method: 'POST',
+            redirect: 'follow', // เพิ่มบรรทัดนี้
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ action: action, payload: payload })
         });
