@@ -4,6 +4,7 @@ body {
   min-height: 100vh; 
   padding: 20px; 
   color: #334155;
+  margin: 0;
 }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -135,6 +136,9 @@ thead th.sticky-col-right { background-color: #1e293b !important; z-index: 11 !i
 #mainApp { display: none; }
 .sort-icon { font-size: 0.8rem; margin-left: 5px; opacity: 0.5; }
 
+/* =========================================
+   🚛 Login Section 2026 Redesign (Glassmorphism + Mesh)
+   ========================================= */
 .login-wrapper {
   position: fixed;
   top: 0; left: 0; 

@@ -1,25 +1,42 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbxzkr11tVpacSZ2xXkwBDigM-tt9_7eX5t6Pwoc46-Jeug9LD3UGnetD6NRfvgxVlCK/exec';
+// นำ URL ใหม่ล่าสุดมาใส่ตรงนี้ครับ
+const API_URL = 'https://script.google.com/macros/s/AKfycbz_Cl1rnOZhuLh-Rzfw0EiIKB3cxLelvQmKsDiAW4zvrcmbsJnf7UTxRQJCsvY-YCxiDA/exec';
 
-async function callAPI(action, payload = {}) {
-    try {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            redirect: 'follow',
-            credentials: 'omit',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: action, payload: payload })
-        });
-        
-        const result = await response.json();
-        
-        if (result && result.success === false && result.message) {
-            throw new Error(result.message);
+async function callAPI(action, payload = {}, retries = 3) {
+    for (let i = 0; i <= retries; i++) {
+        try {
+            // ระบบเข้าคิวอัตโนมัติ: หากโดน Google บล็อก จะรอ 1-3 วินาทีแล้วยิงใหม่เงียบๆ
+            if (i > 0) await new Promise(res => setTimeout(res, 1000 * i + Math.random() * 1000));
+            
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                redirect: 'follow',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: action, payload: payload })
+            });
+            
+            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+            
+            const text = await response.text();
+            let result;
+            try { 
+                result = JSON.parse(text); 
+            } catch (e) { 
+                throw new Error("Server Error"); 
+            }
+            
+            if (result && result.success === false && result.message) {
+                if (result.message.includes("ประมวลผล")) throw new Error("BUSY");
+                throw new Error(result.message);
+            }
+            
+            return result;
+        } catch (error) {
+            // ถ้าระบบพยายามซ่อมตัวเองครบ 3 รอบแล้วยังไม่ได้ ค่อยแจ้ง Error
+            if (i === retries) {
+                console.error('API Error:', error);
+                return { success: false, message: error.message === "BUSY" ? "ระบบหนาแน่น กรุณาลองใหม่" : "การเชื่อมต่อขัดข้อง" };
+            }
         }
-        
-        return result;
-    } catch (error) {
-        console.error('API Error:', error);
-        return { success: false, message: error.message || error.toString() };
     }
 }
 
@@ -61,7 +78,7 @@ window.onload = function() {
   }
 };
 
-function showMainApp() {
+async function showMainApp() {
   document.getElementById('displayUser').innerText = currentUser;
   document.getElementById('loginSection').style.display = 'none';
   document.getElementById('mainApp').style.display = 'block';
@@ -89,30 +106,83 @@ function showMainApp() {
       });
   }
   
-  loadData();
-  loadCustomerData(); 
-  loadDropdownSettings(); 
-  loadPricingData(); 
-  startBackgroundSync(); 
+  // 🚀 โหลดข้อมูลแบบรวบยอดครั้งเดียว (เร็วขึ้นมหาศาล)
+  showGlobalLoading('กำลังดึงฐานข้อมูลระบบ (ครั้งเดียวจบ)...');
+  
+  const res = await callAPI('getInitialData');
+  if (res && res.success) {
+      // 1. จัดการข้อมูล Booking
+      let bData = res.bookings;
+      if (!Array.isArray(bData) || bData.length <= 1) {
+          allData = Array.isArray(bData) ? bData : [];
+          renderTable([]);
+          updateDashboard([]);
+      } else {
+          const headerRow = bData[0];
+          let dataRows = bData.slice(1);
+          dataRows.sort((a, b) => new Date(b[0]) - new Date(a[0]));
+          allData = [headerRow, ...dataRows];
+          localStorage.setItem('bookingDataCache', JSON.stringify(allData));
+          let uniqueCS = [...new Set(allData.slice(1).map(row => row[1]).filter(String))];
+          let csOptions = '';
+          uniqueCS.forEach(cs => { csOptions += `<option value="${cs}">`; });
+          document.getElementById('csDataList').innerHTML = csOptions;
+          applyFilters();
+      }
+
+      // 2. จัดการข้อมูลลูกค้า
+      let cust = res.customerData;
+      customerMapGlobal = cust.customerMap || {};
+      let shortHtml = '';
+      (cust.shortNames || []).forEach(c => { shortHtml += `<option value="${c}">`; });
+      let cList = document.getElementById('customerList');
+      if (cList) cList.innerHTML = shortHtml;
+      
+      let fullHtml = '';
+      let allNames = [...new Set([...(cust.shortNames||[]), ...(cust.fullNames||[])])].sort();
+      allNames.forEach(c => { fullHtml += `<option value="${c}">`; });
+      let compList = document.getElementById('companyList');
+      if (compList) compList.innerHTML = fullHtml;
+
+      // 3. จัดการตั้งค่า Dropdown
+      let set = res.settings;
+      let agentHtml = '';
+      (set.agentList || []).forEach(item => { agentHtml += `<option value="${item}">`; });
+      let aList = document.getElementById('agentDataList');
+      if (aList) aList.innerHTML = agentHtml;
+
+      // 4. จัดการราคาน้ำมัน
+      let pri = res.pricingData;
+      fuelHistory = pri.fuelHistory || [];
+      pricingRules = pri.rules || [];
+      zoneMapping = pri.zoneMapping || {};
+      mappedPlacesGlobal = pri.mappedPlaces || [];
+
+      Swal.close();
+      startBackgroundSync(); 
+  } else {
+      Swal.fire({ icon: 'error', title: 'โหลดข้อมูลล้มเหลว', text: res ? res.message : 'Unknown Error' });
+  }
 }
 
-function doLogin() {
+async function doLogin() {
   const pwd = document.getElementById('loginPassword').value; 
   const btn = document.getElementById('btnLogin');
   if (!pwd) { Swal.fire({ icon: 'warning', title: 'แจ้งเตือน', text: 'กรุณากรอกรหัสผ่าน' }); return; }
   btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> CONNECTING...'; 
   btn.disabled = true;
 
-  callAPI('verifyLogin', { password: pwd }).then(res => {
-    if (res.success) { 
-      currentUser = res.csName; 
-      localStorage.setItem('csName', currentUser); 
-      localStorage.setItem('loginTimestamp', new Date().getTime().toString()); 
-      showMainApp(); 
-    } else { Swal.fire({ icon: 'error', title: 'Access Denied', text: res.message }); }
-    btn.innerHTML = '<span><i class="bi bi-box-arrow-in-right me-2"></i> INITIALIZE</span>'; 
-    btn.disabled = false;
-  });
+  const res = await callAPI('verifyLogin', { password: pwd });
+  if (res.success) { 
+    currentUser = res.csName; 
+    localStorage.setItem('csName', currentUser); 
+    localStorage.setItem('loginTimestamp', new Date().getTime().toString()); 
+    await showMainApp(); 
+  } else { 
+    Swal.fire({ icon: 'error', title: 'Access Denied', text: res.message }); 
+  }
+  btn.innerHTML = '<span><i class="bi bi-box-arrow-in-right me-2"></i> INITIALIZE</span>'; 
+  btn.disabled = false;
 }
 
 function logout() { 
@@ -132,14 +202,14 @@ function showGlobalLoading(title = 'กำลังดำเนินการ..
 
 function startBackgroundSync() {
     clearInterval(backgroundSyncInterval);
-    backgroundSyncInterval = setInterval(() => {
+    backgroundSyncInterval = setInterval(async () => {
         if (currentUser && document.getElementById('mainApp').style.display !== 'none') {
-            loadData(true); 
+            await loadData(true); 
         }
     }, 45000); 
 }
 
-function loadData(silent = false) {
+async function loadData(silent = false) {
   if (!silent) {
       let cached = localStorage.getItem('bookingDataCache');
       if (cached) {
@@ -150,60 +220,67 @@ function loadData(silent = false) {
       }
   }
 
-  callAPI('getBookings').then(data => { 
-      if (!data || data.length <= 1) {
-          allData = data || [];
-          renderTable([]); 
-          updateDashboard([]);
-          return;
+  const data = await callAPI('getBookings');
+  if (data && data.success === false) {
+      if (!silent) {
+          document.getElementById('tableBody').innerHTML = `<tr><td colspan="30" class="text-center py-5 text-danger"><i class="bi bi-x-circle fs-1 d-block mb-2"></i> โหลดข้อมูลไม่สำเร็จ: ${data.message}</td></tr>`;
       }
+      return;
+  }
 
-      const headerRow = data[0];
-      let dataRows = data.slice(1);
-      
-      dataRows.sort((a, b) => {
-          let d1 = new Date(a[0]);
-          let d2 = new Date(b[0]);
-          return d2 - d1;
-      });
+  if (!Array.isArray(data) || data.length <= 1) {
+      allData = Array.isArray(data) ? data : [];
+      renderTable([]); 
+      updateDashboard([]);
+      return;
+  }
 
-      let newData = [headerRow, ...dataRows]; 
-      
-      if (silent) {
-          let oldHash = JSON.stringify(allData);
-          let newHash = JSON.stringify(newData);
-          if (oldHash === newHash) return; 
-          
-          const Toast = Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 3000, timerProgressBar: true });
-          Toast.fire({ icon: 'info', title: '🔄 มีการอัปเดตข้อมูลใหม่จากระบบ' });
-      }
-
-      allData = newData;
-      localStorage.setItem('bookingDataCache', JSON.stringify(allData)); 
-      
-      let uniqueCS = [...new Set(allData.slice(1).map(row => row[1]).filter(String))];
-      let csOptions = '';
-      uniqueCS.forEach(cs => { csOptions += `<option value="${cs}">`; });
-      document.getElementById('csDataList').innerHTML = csOptions;
-      
-      applyFilters(); 
+  const headerRow = data[0];
+  let dataRows = data.slice(1);
+  
+  dataRows.sort((a, b) => {
+      let d1 = new Date(a[0]);
+      let d2 = new Date(b[0]);
+      return d2 - d1;
   });
+
+  let newData = [headerRow, ...dataRows]; 
+  
+  if (silent) {
+      let oldHash = JSON.stringify(allData);
+      let newHash = JSON.stringify(newData);
+      if (oldHash === newHash) return; 
+      
+      const Toast = Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+      Toast.fire({ icon: 'info', title: '🔄 มีการอัปเดตข้อมูลใหม่จากระบบ' });
+  }
+
+  allData = newData;
+  localStorage.setItem('bookingDataCache', JSON.stringify(allData)); 
+  
+  let uniqueCS = [...new Set(allData.slice(1).map(row => row[1]).filter(String))];
+  let csOptions = '';
+  uniqueCS.forEach(cs => { csOptions += `<option value="${cs}">`; });
+  document.getElementById('csDataList').innerHTML = csOptions;
+  
+  applyFilters(); 
 }
 
-function loadCustomerData() {
-  callAPI('getCustomerData').then(res => {
-    customerMapGlobal = res.customerMap || {};
-    let shortHtml = '';
-    res.shortNames.forEach(c => { shortHtml += `<option value="${c}">`; });
-    let cList = document.getElementById('customerList');
-    if(cList) cList.innerHTML = shortHtml;
+async function loadCustomerData() {
+  const res = await callAPI('getCustomerData');
+  if (res && res.success === false) return;
+  
+  customerMapGlobal = res.customerMap || {};
+  let shortHtml = '';
+  (res.shortNames || []).forEach(c => { shortHtml += `<option value="${c}">`; });
+  let cList = document.getElementById('customerList');
+  if(cList) cList.innerHTML = shortHtml;
 
-    let fullHtml = '';
-    let allNames = [...new Set([...res.shortNames, ...res.fullNames])].sort();
-    allNames.forEach(c => { fullHtml += `<option value="${c}">`; });
-    let compList = document.getElementById('companyList');
-    if(compList) compList.innerHTML = fullHtml;
-  });
+  let fullHtml = '';
+  let allNames = [...new Set([...(res.shortNames||[]), ...(res.fullNames||[])])].sort();
+  allNames.forEach(c => { fullHtml += `<option value="${c}">`; });
+  let compList = document.getElementById('companyList');
+  if(compList) compList.innerHTML = fullHtml;
 }
 
 function mapToFullName(inputElem) {
@@ -235,23 +312,22 @@ function autoFillBillingNamesEdit() {
     if (!rec.value || rec.value === custShort) rec.value = mappedFullName;
 }
 
-function loadDropdownSettings() {
-  callAPI('getDropdownSettings').then(res => {
-    let agentHtml = '';
-    res.agentList.forEach(item => { agentHtml += `<option value="${item}">`; });
-    let aList = document.getElementById('agentDataList');
-    if(aList) aList.innerHTML = agentHtml;
-  });
+async function loadDropdownSettings() {
+  const res = await callAPI('getDropdownSettings');
+  if (res && res.success === false) return;
+  let agentHtml = '';
+  (res.agentList || []).forEach(item => { agentHtml += `<option value="${item}">`; });
+  let aList = document.getElementById('agentDataList');
+  if(aList) aList.innerHTML = agentHtml;
 }
 
-function loadPricingData(callback) {
-  callAPI('getFuelAndPricing').then(res => {
-      fuelHistory = res.fuelHistory;
-      pricingRules = res.rules;
-      zoneMapping = res.zoneMapping || {}; 
-      mappedPlacesGlobal = res.mappedPlaces || []; 
-      if(callback) callback();
-  });
+async function loadPricingData() {
+  const res = await callAPI('getFuelAndPricing');
+  if (res && res.success === false) return;
+  fuelHistory = res.fuelHistory || [];
+  pricingRules = res.rules || [];
+  zoneMapping = res.zoneMapping || {}; 
+  mappedPlacesGlobal = res.mappedPlaces || []; 
 }
 
 function openPricingMasterModal() {
@@ -294,14 +370,13 @@ function renderFuelHistory() {
     document.getElementById('fuelHistoryBody').innerHTML = tbody;
 }
 
-function autoUpdatePricesAfterFuelChange() {
+async function autoUpdatePricesAfterFuelChange() {
     if(!allData || allData.length <= 1) {
         Swal.fire({ icon: 'success', title: 'บันทึกราคาน้ำมันสำเร็จ', timer: 1500, showConfirmButton: false });
         return;
     }
     
     let updates = [];
-    
     for(let i = 1; i < allData.length; i++) {
         let r = allData[i];
         let status = r[15] || '';
@@ -332,34 +407,33 @@ function autoUpdatePricesAfterFuelChange() {
             didOpen: () => { Swal.showLoading(); }
         });
         
-        callAPI('updateBatchPrices', { payload: updates, user: currentUser }).then(res => {
-            if(res.success) {
-                loadData(true); 
-                Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จและอัปเดตราคาตู้เรียบร้อย!', timer: 2000, showConfirmButton: false });
-            } else {
-                Swal.fire({ icon: 'error', text: res.message });
-            }
-        });
+        const res = await callAPI('updateBatchPrices', { payload: updates, user: currentUser });
+        if(res.success) {
+            await loadData(true); 
+            Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จและอัปเดตราคาตู้เรียบร้อย!', timer: 2000, showConfirmButton: false });
+        } else {
+            Swal.fire({ icon: 'error', text: res.message });
+        }
     } else {
         Swal.fire({ icon: 'success', title: 'บันทึกราคาน้ำมันสำเร็จ', text: 'ไม่มีตู้ค้างที่ต้องปรับราคา', timer: 1500, showConfirmButton: false });
     }
 }
 
-function saveFuelLog() {
+async function saveFuelLog() {
   let dateStr = document.getElementById('newFuelDate').value;
   let priceVal = document.getElementById('newFuelPrice').value;
   if(!dateStr || !priceVal) { Swal.fire({ icon: 'warning', text: 'กรุณาระบุวันที่และราคาน้ำมันให้ถูกต้อง' }); return; }
   
   showGlobalLoading('กำลังบันทึกราคาน้ำมัน...');
-  callAPI('addFuelPrice', { dateStr: dateStr, priceVal: priceVal, user: currentUser }).then(res => {
-      if(res.success) {
-          document.getElementById('newFuelPrice').value = '';
-          loadPricingData(() => {
-              renderFuelHistory();
-              autoUpdatePricesAfterFuelChange(); 
-          });
-      } else { Swal.fire({ icon: 'error', text: res.message }); }
-  });
+  const res = await callAPI('addFuelPrice', { dateStr: dateStr, priceVal: priceVal, user: currentUser });
+  if(res.success) {
+      document.getElementById('newFuelPrice').value = '';
+      await loadPricingData();
+      renderFuelHistory();
+      await autoUpdatePricesAfterFuelChange(); 
+  } else { 
+      Swal.fire({ icon: 'error', text: res.message }); 
+  }
 }
 
 function editFuelRecord(row, oldDate, oldPrice) {
@@ -377,34 +451,34 @@ function editFuelRecord(row, oldDate, oldPrice) {
             if(!d || !p) { Swal.showValidationMessage('กรุณากรอกข้อมูลให้ครบ!'); return false; }
             return { date: d, price: p };
         }
-    }).then((result) => {
+    }).then(async (result) => {
         if (result.isConfirmed) {
             showGlobalLoading('กำลังบันทึกการแก้ไข...');
-            callAPI('updateFuelPriceRecord', { row: row, dateStr: result.value.date, priceVal: result.value.price, user: currentUser }).then(res => {
-                if(res.success) {
-                    loadPricingData(() => { 
-                        renderFuelHistory(); 
-                        autoUpdatePricesAfterFuelChange(); 
-                    });
-                } else { Swal.fire({ icon: 'error', text: res.message }); }
-            });
+            const res = await callAPI('updateFuelPriceRecord', { row: row, dateStr: result.value.date, priceVal: result.value.price, user: currentUser });
+            if(res.success) {
+                await loadPricingData();
+                renderFuelHistory(); 
+                await autoUpdatePricesAfterFuelChange(); 
+            } else { 
+                Swal.fire({ icon: 'error', text: res.message }); 
+            }
         }
     });
 }
 
 function deleteFuelRecord(row) {
     Swal.fire({ title: 'ลบราคาน้ำมัน?', text: 'รายการนี้จะถูกลบออกจากระบบถาวร', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'ใช่, ลบเลย'
-    }).then((result) => {
+    }).then(async (result) => {
         if(result.isConfirmed) {
             showGlobalLoading('กำลังลบข้อมูล...');
-            callAPI('deleteFuelPriceRecord', { row: row, user: currentUser }).then(res => {
-                if(res.success) {
-                    loadPricingData(() => { 
-                        renderFuelHistory(); 
-                        autoUpdatePricesAfterFuelChange(); 
-                    });
-                } else { Swal.fire({ icon: 'error', text: res.message }); }
-            });
+            const res = await callAPI('deleteFuelPriceRecord', { row: row, user: currentUser });
+            if(res.success) {
+                await loadPricingData();
+                renderFuelHistory(); 
+                await autoUpdatePricesAfterFuelChange(); 
+            } else { 
+                Swal.fire({ icon: 'error', text: res.message }); 
+            }
         }
     });
 }
@@ -442,35 +516,40 @@ function addNewSetting(type) {
       title: `เพิ่ม ${type} ใหม่`, input: 'text', inputPlaceholder: `พิมพ์ชื่อ ${type} ที่ต้องการเพิ่ม...`,
       showCancelButton: true, confirmButtonText: 'บันทึก', cancelButtonText: 'ยกเลิก',
       inputValidator: (value) => { if (!value) return 'กรุณากรอกข้อมูล!'; }
-  }).then((result) => {
+  }).then(async (result) => {
       if (result.isConfirmed) {
           showGlobalLoading(`กำลังเพิ่ม ${type}...`);
-          callAPI('addSetting', { type: type, value: result.value.trim() }).then(res => {
-              if (res.success) { loadDropdownSettings(); Swal.fire({ icon: 'success', title: 'เพิ่มสำเร็จ', timer: 1500, showConfirmButton: false }); } 
-              else { Swal.fire({ icon: 'error', text: res.message }); }
-          });
+          const res = await callAPI('addSetting', { type: type, value: result.value.trim() });
+          if (res.success) { 
+              await loadDropdownSettings(); 
+              Swal.fire({ icon: 'success', title: 'เพิ่มสำเร็จ', timer: 1500, showConfirmButton: false }); 
+          } 
+          else { Swal.fire({ icon: 'error', text: res.message }); }
       }
   });
 }
 
-function openLogModal() {
+async function openLogModal() {
   new bootstrap.Modal(document.getElementById('logModal')).show();
   document.getElementById('logTableBody').innerHTML = '<tr><td colspan="4" class="text-center py-4"><div class="spinner-border spinner-border-sm text-info"></div> กำลังโหลดประวัติ...</td></tr>';
-  callAPI('getLogs').then(logs => {
-      if (!Array.isArray(logs) || logs.length <= 1) { document.getElementById('logTableBody').innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted">ยังไม่มีประวัติการทำงาน</td></tr>'; return; }
-      let html = '';
-      logs.forEach(row => {
-          if (row[0] === 'วันที่เวลา' || row[0] === 'Timestamp' || row[0] === '') return;
-          let dateFormatted = formatDateHTML(row[0]) + " " + (new Date(row[0]).toLocaleTimeString('th-TH'));
-          if (dateFormatted.includes('Invalid')) dateFormatted = row[0]; 
-          html += `<tr><td class="text-muted small">${dateFormatted}</td><td class="fw-bold text-primary">${row[1] || '-'}</td><td><span class="badge bg-info text-dark">${row[2] || '-'}</span></td><td class="small text-wrap">${row[3] || '-'}</td></tr>`;
-      });
-      document.getElementById('logTableBody').innerHTML = html;
+  const logs = await callAPI('getLogs');
+  if (logs && logs.success === false) { 
+      document.getElementById('logTableBody').innerHTML = `<tr><td colspan="4" class="text-center py-4 text-danger">${logs.message}</td></tr>`; return; 
+  }
+  if (!Array.isArray(logs) || logs.length <= 1) { document.getElementById('logTableBody').innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted">ยังไม่มีประวัติการทำงาน</td></tr>'; return; }
+  
+  let html = '';
+  logs.forEach(row => {
+      if (row[0] === 'วันที่เวลา' || row[0] === 'Timestamp' || row[0] === '') return;
+      let dateFormatted = formatDateHTML(row[0]) + " " + (new Date(row[0]).toLocaleTimeString('th-TH'));
+      if (dateFormatted.includes('Invalid')) dateFormatted = row[0]; 
+      html += `<tr><td class="text-muted small">${dateFormatted}</td><td class="fw-bold text-primary">${row[1] || '-'}</td><td><span class="badge bg-info text-dark">${row[2] || '-'}</span></td><td class="small text-wrap">${row[3] || '-'}</td></tr>`;
   });
+  document.getElementById('logTableBody').innerHTML = html;
 }
 
 function updateDashboard(dataArray) {
-  if (!dataArray || dataArray.length <= 1) {
+  if (!Array.isArray(dataArray) || dataArray.length <= 1) {
       document.getElementById('sumTotal').innerText = 0; 
       document.getElementById('sumPending').innerText = 0; 
       document.getElementById('sumDone').innerText = 0; 
@@ -495,7 +574,7 @@ function updateDashboard(dataArray) {
 }
 
 function sortTable(colIndex) {
-  if (filteredData.length <= 1) return;
+  if (!Array.isArray(filteredData) || filteredData.length <= 1) return;
   const headerRow = filteredData[0];
   let dataRows = filteredData.slice(1);
   if (currentSortCol === colIndex) { sortAsc = !sortAsc; } else { currentSortCol = colIndex; sortAsc = true; }
@@ -535,7 +614,7 @@ function changePage(step) {
 }
 
 function renderTable(dataArray) {
-  if (!dataArray || dataArray.length <= 1) {
+  if (!Array.isArray(dataArray) || dataArray.length <= 1) {
       document.getElementById('tableBody').innerHTML = '<tr><td colspan="30" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i> ไม่มีข้อมูลในระบบ</td></tr>';
       document.getElementById('tableHead').innerHTML = '';
       document.getElementById('paginationControls').style.setProperty('display', 'none', 'important');
@@ -687,7 +766,7 @@ function renderBatchTruckTable() {
   document.getElementById('batchTruckBody').innerHTML = html;
 }
 
-function saveBatchTruckMulti() {
+async function saveBatchTruckMulti() {
   const rows = document.querySelectorAll('.batch-truck-row'); 
   if (rows.length === 0) return;
   let payload = [];
@@ -708,10 +787,13 @@ function saveBatchTruckMulti() {
   if (hasError) { Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ครบ!', text: 'กรุณาระบุ ทะเบียนรถ และ เบอร์ตู้ ให้ครบถ้วนสำหรับงานที่ต้องการจัดรถ' }); return; }
 
   showGlobalLoading('กำลังบันทึก...');
-  callAPI('updateBatchTruckMulti', { truckDataArray: payload, user: currentUser }).then(res => {
-    if (res.success) { bootstrap.Modal.getInstance(document.getElementById('batchTruckModal')).hide(); loadData(true); Swal.fire({ icon: 'success', title: 'สำเร็จ!', timer: 1500, showConfirmButton: false }); } 
-    else { Swal.fire({ icon: 'error', text: res.message }); }
-  });
+  const res = await callAPI('updateBatchTruckMulti', { truckDataArray: payload, user: currentUser });
+  if (res.success) { 
+      bootstrap.Modal.getInstance(document.getElementById('batchTruckModal')).hide(); 
+      await loadData(true); 
+      Swal.fire({ icon: 'success', title: 'สำเร็จ!', timer: 1500, showConfirmButton: false }); 
+  } 
+  else { Swal.fire({ icon: 'error', text: res.message }); }
 }
 
 function debouncedApplyFilters() {
@@ -721,7 +803,7 @@ function debouncedApplyFilters() {
 }
 
 function applyFilters() {
-  if (!allData || allData.length <= 1) {
+  if (!Array.isArray(allData) || allData.length <= 1) {
       renderTable([]);
       updateDashboard([]);
       return;
@@ -964,7 +1046,7 @@ function autoCalcEditPrice() {
     if(price > 0) document.getElementById('ePrice').value = price;
 }
 
-function updatePriceEntireBooking() {
+async function updatePriceEntireBooking() {
     let bkgNo = document.getElementById('eBooking').value.trim();
     if(!bkgNo) return;
 
@@ -996,16 +1078,15 @@ function updatePriceEntireBooking() {
             html: `ระบบจะคำนวณและปรับราคาใหม่ให้กับตู้ <b>${updates.length} ใบ</b><br>ใน Booking: <b class="text-primary">${bkgNo}</b>`,
             icon: 'question',
             showCancelButton: true, confirmButtonColor: '#10b981', confirmButtonText: 'ใช่, อัปเดตเลย', cancelButtonText: 'ยกเลิก'
-        }).then(res => {
+        }).then(async res => {
             if(res.isConfirmed) {
                 showGlobalLoading('กำลังอัปเดตราคาทั้ง Booking...');
-                callAPI('updateBatchPrices', { payload: updates, user: currentUser }).then(res => {
-                    if(res.success) {
-                        autoCalcEditPrice(); 
-                        loadData(true); 
-                        Swal.fire({ icon: 'success', title: 'อัปเดตราคาสำเร็จ!', timer: 1500, showConfirmButton: false });
-                    } else { Swal.fire('Error', res.message, 'error'); }
-                });
+                const resApi = await callAPI('updateBatchPrices', { payload: updates, user: currentUser });
+                if(resApi.success) {
+                    autoCalcEditPrice(); 
+                    await loadData(true); 
+                    Swal.fire({ icon: 'success', title: 'อัปเดตราคาสำเร็จ!', timer: 1500, showConfirmButton: false });
+                } else { Swal.fire('Error', resApi.message, 'error'); }
             }
         });
     } else {
@@ -1086,7 +1167,7 @@ function generateRows() {
   document.getElementById('container-rows').innerHTML = html;
 }
 
-function saveData() {
+async function saveData() {
   const bkg = document.getElementById('booking').value.trim(); 
   const customer = document.getElementById('customer').value.trim(); 
   const loadPlace = document.getElementById('loadPlace').value.trim();
@@ -1129,13 +1210,16 @@ function saveData() {
   }
 
   showGlobalLoading('กำลังบันทึกข้อมูล...');
-  callAPI('saveMultipleBookings', { dataArray: dataArray }).then(res => {
-    if (res.success) { 
-        bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); 
-        clearForm(); loadData(true); loadCustomerData(); 
-        Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ!', timer: 1500, showConfirmButton: false }); 
-    } else { Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.message }); }
-  });
+  const res = await callAPI('saveMultipleBookings', { dataArray: dataArray });
+  if (res.success) { 
+      bootstrap.Modal.getInstance(document.getElementById('addModal')).hide(); 
+      clearForm(); 
+      await loadData(true); 
+      await loadCustomerData(); 
+      Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ!', timer: 1500, showConfirmButton: false }); 
+  } else { 
+      Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: res.message }); 
+  }
 }
 
 function formatDateHTML(dateStr) {
@@ -1241,7 +1325,7 @@ function openEditModal(rowNum) {
   new bootstrap.Modal(document.getElementById('editModal')).show();
 }
 
-function saveEdit() {
+async function saveEdit() {
   let rowNum = parseInt(document.getElementById('eRowIndex').value); 
   let r = allData.find(row => row[row.length - 1] === rowNum); 
   const v = (id) => document.getElementById(id).value;
@@ -1268,16 +1352,18 @@ function saveEdit() {
   ];
   
   showGlobalLoading('กำลังบันทึกการแก้ไข...');
-  callAPI('updateSingleRow', { rowNumber: rowNum, rowData: updatedData, user: currentUser }).then(res => {
-    if (res.success) { 
-        bootstrap.Modal.getInstance(document.getElementById('editModal')).hide(); 
-        loadData(true); loadCustomerData(); 
-        Swal.fire({ icon: 'success', title: 'อัปเดตสำเร็จ!', timer: 1500, showConfirmButton: false }); 
-    } else { Swal.fire({ icon: 'error', text: res.message }); }
-  });
+  const res = await callAPI('updateSingleRow', { rowNumber: rowNum, rowData: updatedData, user: currentUser });
+  if (res.success) { 
+      bootstrap.Modal.getInstance(document.getElementById('editModal')).hide(); 
+      await loadData(true); 
+      await loadCustomerData(); 
+      Swal.fire({ icon: 'success', title: 'อัปเดตสำเร็จ!', timer: 1500, showConfirmButton: false }); 
+  } else { 
+      Swal.fire({ icon: 'error', text: res.message }); 
+  }
 }
 
-function finishEntireBooking() {
+async function finishEntireBooking() {
     let rowNum = parseInt(document.getElementById('eRowIndex').value);
     let bkgNo = document.getElementById('eBooking').value.trim(); 
     if(!bkgNo) return;
@@ -1318,16 +1404,15 @@ function finishEntireBooking() {
         html: `ระบบจะเซฟข้อมูลตู้ใบนี้และเปลี่ยนสถานะตู้ทั้งหมดใน<br><b class="text-primary">${bkgNo}</b> เป็น <b class="text-success">"จบงานรอวางบิล"</b> หรือไม่?`,
         icon: 'question',
         showCancelButton: true, confirmButtonColor: '#10b981', confirmButtonText: '<i class="bi bi-check2-all"></i> ใช่, จบงานรวดเดียว!', cancelButtonText: 'ยกเลิก'
-    }).then(res => {
+    }).then(async res => {
         if(res.isConfirmed) {
             showGlobalLoading('กำลังบันทึกและเปลี่ยนสถานะทั้ง Booking...');
-            callAPI('saveAndFinishBookingBatch', { rowNumber: rowNum, rowData: updatedData, bookingNo: bkgNo, user: currentUser }).then(res => {
-                if(res.success) {
-                    bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
-                    loadData(true);
-                    Swal.fire({ icon: 'success', title: 'สำเร็จ!', text: res.message, timer: 2000, showConfirmButton: false });
-                } else { Swal.fire('เกิดข้อผิดพลาด', res.message, 'error'); }
-            });
+            const resApi = await callAPI('saveAndFinishBookingBatch', { rowNumber: rowNum, rowData: updatedData, bookingNo: bkgNo, user: currentUser });
+            if(resApi.success) {
+                bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+                await loadData(true);
+                Swal.fire({ icon: 'success', title: 'สำเร็จ!', text: resApi.message, timer: 2000, showConfirmButton: false });
+            } else { Swal.fire('เกิดข้อผิดพลาด', resApi.message, 'error'); }
         }
     });
 }
@@ -1340,12 +1425,15 @@ function deleteSingle() {
   }
 
   Swal.fire({ title: 'ยืนยันการลบตู้?', text: `ลบตู้นี้ออกจาก Booking หรือไม่?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'ใช่, ลบเลย!' 
-  }).then((result) => {
+  }).then(async (result) => {
     if (result.isConfirmed) {
       showGlobalLoading('กำลังลบข้อมูล...');
-      callAPI('deleteSingleRow', { rowNumber: parseInt(document.getElementById('eRowIndex').value), user: currentUser, bkgNo: bkgNo }).then(res => {
-        if (res.success) { bootstrap.Modal.getInstance(document.getElementById('editModal')).hide(); loadData(true); Swal.fire({ icon: 'success', timer: 1500, showConfirmButton: false }); }
-      });
+      const res = await callAPI('deleteSingleRow', { rowNumber: parseInt(document.getElementById('eRowIndex').value), user: currentUser, bkgNo: bkgNo });
+      if (res.success) { 
+          bootstrap.Modal.getInstance(document.getElementById('editModal')).hide(); 
+          await loadData(true); 
+          Swal.fire({ icon: 'success', timer: 1500, showConfirmButton: false }); 
+      }
     }
   });
 }
@@ -1397,13 +1485,17 @@ function debouncedFilterDeleteModal() {
 
 function confirmDeleteBooking(bkgNo) {
   Swal.fire({ title: 'ยืนยันการลบ Booking?', html: `คุณกำลังจะลบตู้ทั้งหมดของ<br><b class="fs-5 text-danger">${bkgNo}</b><br>ใช่หรือไม่?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#6c757d', confirmButtonText: '<i class="bi bi-trash"></i> ใช่, ลบทั้งหมด!', cancelButtonText: 'ยกเลิก'
-  }).then((result) => {
+  }).then(async (result) => {
     if (result.isConfirmed) {
       showGlobalLoading(`กำลังลบ Booking: ${bkgNo}...`);
-      callAPI('deleteByBooking', { bookingNo: bkgNo, user: currentUser }).then(res => {
-        if (res.success) { bootstrap.Modal.getInstance(document.getElementById('deleteBookingModal')).hide(); loadData(true); Swal.fire({ icon: 'success', title: 'ลบสำเร็จ!', timer: 1500, showConfirmButton: false }); } 
-        else { Swal.fire({ icon: 'error', text: res.message }); }
-      });
+      const res = await callAPI('deleteByBooking', { bookingNo: bkgNo, user: currentUser });
+      if (res.success) { 
+          bootstrap.Modal.getInstance(document.getElementById('deleteBookingModal')).hide(); 
+          await loadData(true); 
+          Swal.fire({ icon: 'success', title: 'ลบสำเร็จ!', timer: 1500, showConfirmButton: false }); 
+      } else { 
+          Swal.fire({ icon: 'error', text: res.message }); 
+      }
     }
   });
 }
@@ -1439,12 +1531,15 @@ function openCustomerModal() {
   new bootstrap.Modal(document.getElementById('customerModal')).show();
 }
 
-function loadCustomerTable() {
+async function loadCustomerTable() {
   document.getElementById('customerTableBody').innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary"></div> กำลังโหลดข้อมูลลูกค้า...</td></tr>';
-  callAPI('getRawCustomerData').then(data => {
-      rawCustomers = data;
-      renderCustomerTable();
-  });
+  const data = await callAPI('getRawCustomerData');
+  if(data && data.success === false) {
+      document.getElementById('customerTableBody').innerHTML = `<tr><td colspan="5" class="text-center py-4 text-danger">${data.message}</td></tr>`;
+      return;
+  }
+  rawCustomers = Array.isArray(data) ? data : [];
+  renderCustomerTable();
 }
 
 function debouncedRenderCustomerTable() {
@@ -1495,7 +1590,7 @@ function renderCustomerTable() {
   document.getElementById('customerTableBody').innerHTML = tbody;
 }
 
-function addCustomerRecordJS() {
+async function addCustomerRecordJS() {
   let payload = {
       shortName: document.getElementById('newCustShort').value.trim(),
       fullName: document.getElementById('newCustFull').value.trim(),
@@ -1511,15 +1606,16 @@ function addCustomerRecordJS() {
   }
   
   showGlobalLoading('กำลังเพิ่มข้อมูลลูกค้า...');
-  callAPI('addCustomerRecord', { payload: payload, user: currentUser }).then(res => {
-      if(res.success) {
-          let fields = ['newCustShort', 'newCustFull', 'newCustAddress', 'newCustTax', 'newCustCredit', 'newCustRemark'];
-          fields.forEach(id => document.getElementById(id).value = '');
-          loadCustomerTable(); 
-          loadCustomerData(); 
-          Swal.fire({icon: 'success', title: 'เพิ่มลูกค้าสำเร็จ!', timer: 1500, showConfirmButton: false});
-      } else { Swal.fire({icon: 'error', text: res.message}); }
-  });
+  const res = await callAPI('addCustomerRecord', { payload: payload, user: currentUser });
+  if(res.success) {
+      let fields = ['newCustShort', 'newCustFull', 'newCustAddress', 'newCustTax', 'newCustCredit', 'newCustRemark'];
+      fields.forEach(id => document.getElementById(id).value = '');
+      await loadCustomerTable(); 
+      await loadCustomerData(); 
+      Swal.fire({icon: 'success', title: 'เพิ่มลูกค้าสำเร็จ!', timer: 1500, showConfirmButton: false});
+  } else { 
+      Swal.fire({icon: 'error', text: res.message}); 
+  }
 }
 
 function editCustomerModal(encodedData) {
@@ -1575,16 +1671,15 @@ function editCustomerModal(encodedData) {
               remark: document.getElementById('editCustRemark').value.trim()
           };
       }
-  }).then((res) => {
+  }).then(async (res) => {
       if (res.isConfirmed) {
           showGlobalLoading('กำลังบันทึกการแก้ไข...');
-          callAPI('updateCustomerRecord', { oldShort: data.oldShort, oldFull: data.oldFull, payloadData: res.value, user: currentUser }).then(response => {
-              if(response.success) {
-                  loadCustomerTable();
-                  loadCustomerData(); 
-                  Swal.fire({icon: 'success', title: 'อัปเดตสำเร็จ!', timer: 1500, showConfirmButton: false});
-              } else { Swal.fire({icon: 'error', text: response.message}); }
-          });
+          const response = await callAPI('updateCustomerRecord', { oldShort: data.oldShort, oldFull: data.oldFull, payloadData: res.value, user: currentUser });
+          if(response.success) {
+              await loadCustomerTable();
+              await loadCustomerData(); 
+              Swal.fire({icon: 'success', title: 'อัปเดตสำเร็จ!', timer: 1500, showConfirmButton: false});
+          } else { Swal.fire({icon: 'error', text: response.message}); }
       }
   });
 }
@@ -1596,16 +1691,15 @@ function deleteCustomerModal(oldShort, oldFull) {
       text: `คุณต้องการลบข้อมูลลูกค้า "${showName}" หรือไม่?`,
       icon: 'warning',
       showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: '<i class="bi bi-trash"></i> ใช่, ลบเลย'
-  }).then((res) => {
+  }).then(async (res) => {
       if (res.isConfirmed) {
           showGlobalLoading('กำลังลบข้อมูล...');
-          callAPI('deleteCustomerRecord', { oldShort: oldShort, oldFull: oldFull, user: currentUser }).then(response => {
-              if(response.success) {
-                  loadCustomerTable();
-                  loadCustomerData(); 
-                  Swal.fire({icon: 'success', title: 'ลบสำเร็จ!', timer: 1500, showConfirmButton: false});
-              } else { Swal.fire({icon: 'error', text: response.message}); }
-          });
+          const response = await callAPI('deleteCustomerRecord', { oldShort: oldShort, oldFull: oldFull, user: currentUser });
+          if(response.success) {
+              await loadCustomerTable();
+              await loadCustomerData(); 
+              Swal.fire({icon: 'success', title: 'ลบสำเร็จ!', timer: 1500, showConfirmButton: false});
+          } else { Swal.fire({icon: 'error', text: response.message}); }
       }
   });
 }
