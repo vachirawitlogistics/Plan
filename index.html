@@ -3,855 +3,811 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>Booking Management System</title>
-  
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <title>Vachirawit Logistics OS</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-  
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="style.css">
+  <style>
+    .navbar-custom { background-color: #0f172a !important; border-bottom: 1px solid #1e293b; padding: 0.3rem 1rem; }
+    .navbar-brand-text { font-weight: 700; letter-spacing: 0.5px; color: #f8fafc; font-size: 1.1rem; }
+    .navbar-brand-text span { color: #3b82f6; font-weight: 500; }
+    .nav-btn-modern { color: #94a3b8; font-weight: 500; transition: all 0.2s; border-radius: 6px; padding: 5px 12px; font-size: 0.9rem; }
+    .nav-btn-modern:hover { color: #f8fafc; background: rgba(255,255,255,0.05); }
+    .nav-btn-modern.active { color: #fff; background: rgba(59, 130, 246, 0.15); font-weight: 600; }
+    .stat-card { display: flex; align-items: center; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 12px; min-width: 130px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.02); flex: 1; }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.05); border-color: #cbd5e1; }
+    .stat-card .icon-wrapper { width: 32px; height: 32px; border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 1.1rem; margin-right: 10px; }
+    .stat-card.blue .icon-wrapper { background: #eff6ff; color: #3b82f6; }
+    .stat-card.orange .icon-wrapper { background: #fff7ed; color: #f97316; }
+    .stat-card.green .icon-wrapper { background: #f0fdf4; color: #10b981; }
+    .stat-card.purple .icon-wrapper { background: #f5f3ff; color: #8b5cf6; }
+    .stat-card .stat-info { display: flex; flex-direction: column; line-height: 1; }
+    .stat-card .stat-value { font-size: 1.2rem; font-weight: 700; color: #1e293b; }
+    .stat-card .stat-label { font-size: 0.7rem; font-weight: 500; color: #64748b; margin-top: 2px; }
+    .btn-modern-primary { background-color: #2563eb; color: white; font-weight: 600; border-radius: 6px; padding: 6px 14px; font-size: 0.85rem; border: none; transition: all 0.2s; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.15); }
+    .btn-modern-primary:hover { background-color: #1d4ed8; color: white; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(37, 99, 235, 0.25); }
+    .btn-modern-outline { background-color: white; color: #475569; font-weight: 600; border-radius: 6px; padding: 6px 14px; font-size: 0.85rem; border: 1px solid #cbd5e1; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+    .btn-modern-outline:hover { background-color: #f8fafc; color: #0f172a; border-color: #94a3b8; }
+    .modern-tabs { background: #f1f5f9; padding: 3px; border-radius: 8px; display: inline-flex; border: 1px solid #e2e8f0; }
+    .modern-tabs .nav-link { border-radius: 5px; color: #64748b; font-weight: 600; padding: 5px 16px; font-size: 0.85rem; margin: 0; transition: all 0.2s; }
+    .modern-tabs .nav-link:hover { color: #0f172a; }
+    .modern-tabs .nav-link.active-audit, .modern-tabs .nav-link.active-invoice, .modern-tabs .nav-link.active-history { background: #ffffff; color: #0f172a; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+    .custom-scroll::-webkit-scrollbar { width: 6px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+    #mainApp { padding: 8px 12px 2vh 12px; }
+    .table-container { max-height: calc(100vh - 175px); overflow-y: auto; }
+  </style>
 </head>
 <body>
 
-<datalist id="customerList"></datalist>
-<datalist id="companyList"></datalist>
-<datalist id="csDataList"></datalist> 
-<datalist id="agentDataList"></datalist> 
-<datalist id="loadPlaceList"></datalist>
-<datalist id="cyPlaceList"></datalist>
-<datalist id="rtnPlaceList"></datalist> 
-
-<datalist id="typeList"><option value="20'"><option value="40'"><option value="40HQ"></datalist>
-<datalist id="fuelRuleList"><option value="1"><option value="15"><option value="เฉลี่ยเดือน"><option value="เฉลี่ยครึ่ง"></datalist>
-
-<div id="loginSection" class="login-wrapper" style="display: none;">
-  <div class="mesh-bg"></div>
-  <div class="login-card p-4 p-md-5 text-center fade-in-up position-relative z-1">
-    <div class="truck-icon-wrapper mb-4 mx-auto">
-      <i class="bi bi-truck text-white fs-1"></i>
+  <!-- Global Loader -->
+  <div id="global-full-loader" class="global-loader-wrapper" style="display: none;">
+    <div class="loader-content text-center">
+      <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+      <h5 id="global-loader-text" class="mt-3 text-white fw-bold tracking-wide">กำลังประมวลผลข้อมูล...</h5>
     </div>
-    <h2 class="mb-2 fw-bold text-gradient-2026">Nexus Logistics</h2>
-    <p class="text-secondary mb-4 small fw-medium">Unified Booking OS // 2026</p>
-
-    <div class="input-group mb-4 login-input-group shadow-sm">
-      <span class="input-group-text bg-transparent border-end-0 ps-4">
-          <i class="bi bi-fingerprint text-primary fs-5"></i>
-      </span>
-      <input type="password" id="loginPassword" class="form-control form-control-lg border-start-0 shadow-none text-center fw-bold" placeholder="AUTH KEY..." onkeypress="if(event.key === 'Enter') doLogin()">
-    </div>
-    <button class="btn btn-login-2026 btn-lg w-100 fw-bold rounded-pill shadow" onclick="doLogin()" id="btnLogin">
-      <span><i class="bi bi-box-arrow-in-right me-2"></i> INITIALIZE</span>
-    </button>
   </div>
-</div>
 
-<div id="mainApp" class="container-fluid slide-up">
-  
-  <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center mb-3 mt-2 gap-3">
-    <div class="d-flex align-items-center justify-content-between w-100 w-xl-auto">
-      <div class="d-flex align-items-center gap-2">
-        <h3 class="fw-bold m-0" style="color: #1e293b; white-space: nowrap;"><i class="bi bi-bar-chart-fill text-primary"></i> Data Dashboard</h3>
-      </div>
-      <span class="badge bg-white text-secondary border px-3 py-2 rounded-pill shadow-sm d-flex align-items-center fs-6">
-        <i class="bi bi-person-circle text-primary me-2"></i> <strong id="displayUser" class="text-primary"></strong>
-      </span>
-    </div>
+  <datalist id="customerList"></datalist>
+  <datalist id="companyList"></datalist>
+  <datalist id="modalCompanyList"></datalist>
+  <datalist id="csDataList"></datalist>
+  <datalist id="agentDataList"></datalist>
+  <datalist id="loadPlaceList"></datalist>
+  <datalist id="cyPlaceList"></datalist>
+  <datalist id="rtnPlaceList"></datalist>
 
-    <div class="row g-2 w-100 w-xl-auto my-1 my-xl-0 flex-grow-1 justify-content-xl-center">
-      <div class="col-6 col-xl-auto">
-        <div class="compact-card bg-gradient-total shadow-sm h-100 w-100" onclick="showCSBreakdown('total')" title="ตู้ทั้งหมด">
-            <div class="card-icon"><i class="bi bi-box-seam"></i></div>
-            <div class="card-info">
-                <span class="card-label">ตู้ทั้งหมด</span>
-                <span class="card-value" id="sumTotal">0</span>
-            </div>
+  <!-- Login Section -->
+  <div id="loginSection" class="login-wrapper">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+    <div class="blob blob-4"></div>
+    <div class="container d-flex justify-content-center align-items-center h-100 position-relative z-1">
+      <div class="login-card text-center fade-in-up">
+        <div class="login-icon-wrapper mb-4">
+          <div class="login-icon-bg pulse-anim"><i class="bi bi-hexagon-fill text-white" style="font-size: 2.5rem;"></i></div>
         </div>
-      </div>
-      <div class="col-6 col-xl-auto">
-        <div class="compact-card bg-gradient-pending shadow-sm h-100 w-100" onclick="showCSBreakdown('pending')" title="รอจัดรถ">
-            <div class="card-icon"><i class="bi bi-clock-history"></i></div>
-            <div class="card-info">
-                <span class="card-label">รอจัดรถ</span>
-                <span class="card-value" id="sumPending">0</span>
-            </div>
+        <h3 class="mb-1 fw-bold text-gradient">Vachirawit Logistics</h3>
+        <p class="mb-4 small fw-medium tracking-wide text-light-50">UNIFIED OS</p>
+        <div class="form-floating mb-4 login-input-group">
+          <input type="password" id="loginPassword" class="form-control text-center shadow-none" placeholder="Password" onkeypress="if(event.key === 'Enter') doLogin()">
+          <label for="loginPassword" class="text-center w-100"><i class="bi bi-shield-lock me-1"></i> รหัสผ่านเข้าสู่ระบบ</label>
         </div>
-      </div>
-      <div class="col-6 col-xl-auto">
-        <div class="compact-card bg-gradient-done shadow-sm h-100 w-100" onclick="showCSBreakdown('done')" title="จัดรถแล้ว (กำลังวิ่งงาน)">
-            <div class="card-icon"><i class="bi bi-truck"></i></div>
-            <div class="card-info">
-                <span class="card-label">จัดรถแล้ว</span>
-                <span class="card-value" id="sumDone">0</span>
-            </div>
-        </div>
-      </div>
-      <div class="col-6 col-xl-auto">
-        <div class="compact-card bg-gradient-finished shadow-sm h-100 w-100" onclick="showCSBreakdown('finished')" title="จบงานพร้อมส่งบัญชี">
-            <div class="card-icon"><i class="bi bi-check2-all"></i></div>
-            <div class="card-info">
-                <span class="card-label">จบงานรอวางบิล</span>
-                <span class="card-value" id="sumFinished">0</span>
-            </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="d-flex flex-wrap justify-content-between justify-content-xl-end align-items-center gap-2 w-100 w-xl-auto">
-      <div class="dropdown flex-grow-1 flex-xl-grow-0">
-        <button class="btn btn-light bg-white border shadow-sm rounded-pill fw-bold px-3 py-2 w-100 btn-add-action" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-          <i class="bi bi-grid-fill text-secondary me-1"></i> เมนูจัดการ
-        </button>
-        <ul class="dropdown-menu shadow-lg border-0 mt-2 w-100" style="border-radius: 12px; min-width: 220px;">
-          <li><a class="dropdown-item py-2 fw-bold text-success" href="javascript:void(0)" onclick="openBatchTruckModal()"><i class="bi bi-truck me-2"></i> จัดการรถ (Batch)</a></li>
-          <li><a class="dropdown-item py-2 fw-bold text-warning" href="javascript:void(0)" onclick="openPricingMasterModal()"><i class="bi bi-cash-coin me-2"></i> จัดการราคา / น้ำมัน</a></li>
-          <li><a class="dropdown-item py-2 fw-bold text-primary" href="javascript:void(0)" onclick="openCustomerModal()"><i class="bi bi-people-fill me-2"></i> จัดการลูกค้า</a></li>
-          <li><a class="dropdown-item py-2 fw-bold text-info" href="javascript:void(0)" onclick="openLogModal()"><i class="bi bi-clock-history me-2"></i> ประวัติการทำงาน</a></li>
-          <li><hr class="dropdown-divider"></li>
-          <li><a class="dropdown-item py-2 fw-bold text-success" href="javascript:void(0)" onclick="exportToExcel()"><i class="bi bi-file-earmark-excel-fill me-2"></i> โหลดไฟล์ Excel</a></li>
-          <li><a class="dropdown-item py-2 fw-bold text-danger" href="javascript:void(0)" onclick="openDeleteBookingModal()"><i class="bi bi-trash-fill me-2"></i> ลบ Booking</a></li>
-        </ul>
-      </div>
-
-      <button class="btn btn-booking-pulse rounded-pill px-4 py-2 shadow-lg fw-bold btn-add-action flex-grow-1 flex-xl-grow-0" data-bs-toggle="modal" data-bs-target="#addModal" onclick="clearForm()">
-        <i class="bi bi-plus-circle-fill fs-6 me-1"></i> เพิ่ม Booking
-      </button>
-
-      <div class="d-flex gap-2">
-        <button class="btn btn-light rounded-circle shadow-sm btn-add-action icon-btn border" onclick="loadData(false); loadCustomerList(); loadPricingData();" title="รีเฟรชข้อมูล">
-          <i class="bi bi-arrow-clockwise text-secondary"></i>
-        </button>
-        <button class="btn btn-light rounded-circle shadow-sm btn-add-action icon-btn border border-danger text-danger" onclick="logout()" title="ออกจากระบบ">
-          <i class="bi bi-power"></i>
+        <button class="btn btn-login w-100 py-3 shadow-lg" onclick="doLogin()" id="btnLogin">
+          <span class="fw-bold fs-6 tracking-wide">AUTHENTICATE</span>
+          <i class="bi bi-rocket-takeoff-fill ms-2 animate-fly"></i>
         </button>
       </div>
     </div>
   </div>
 
-  <div class="card p-3 p-md-4 mb-4">
-    <div class="row g-2 mb-3 border-bottom pb-3 align-items-end">
-      <div class="col-12 col-md-2">
-        <label class="small text-muted mb-1">ค้นหาทั่วไป</label>
-        <input type="text" id="filterText" class="form-control form-control-sm" placeholder="พิมพ์เพื่อค้นหา..." onkeyup="debouncedApplyFilters()">
-      </div>
-      <div class="col-6 col-md-1">
-        <label class="small text-muted mb-1">CS</label>
-        <input type="text" id="filterCS" list="csDataList" class="form-control form-control-sm" placeholder="พิมพ์ชื่อ..." onkeyup="debouncedApplyFilters()" onchange="debouncedApplyFilters()">
-      </div>
-      
-      <div class="col-6 col-md-2">
-        <label class="small text-muted mb-1">สถานะ</label>
-        <select id="filterStatus" class="form-select form-select-sm" onchange="debouncedApplyFilters()">
-          <option value="">- ทุกสถานะ -</option>
-          <option value="รอจัดรถ">รอจัดรถ</option>
-          <option value="กำลังไปรับตู้">กำลังไปรับตู้</option>
-          <option value="ดรอปตู้ (รอบรรจุ)">ดรอปตู้ (รอบรรจุ)</option>
-          <option value="กำลังบรรจุ/เปิดตู้">กำลังบรรจุ/เปิดตู้</option>
-          <option value="ดรอปตู้ (รอคืน)">ดรอปตู้ (รอคืน)</option>
-          <option value="กำลังไปคืนตู้">กำลังไปคืนตู้</option>
-          <option value="คืนตู้แล้ว">คืนตู้แล้ว</option>
-          <option value="จบงานรอวางบิล">จบงานรอวางบิล</option>
-          <option value="พร้อมวางบิล">พร้อมวางบิล</option>
-          <option value="วางบิลแล้ว">วางบิลแล้ว</option>
-        </select>
-      </div>
-
-      <div class="col-12 col-md-2">
-        <label class="small text-muted mb-1">Mode</label>
-        <select id="filterMode" class="form-select form-select-sm" onchange="debouncedApplyFilters()">
-          <option value="">- ทุก Mode -</option>
-          <option value="BKK">BKK (กรุงเทพ)</option>
-          <option value="LCB">LCB (แหลมฉบัง)</option>
-          <option value="Export/BKK">Export/BKK (ส่งออก/กรุงเทพ)</option>
-          <option value="Export/LCB">Export/LCB (ส่งออก/แหลมฉบัง)</option>
-          <option value="Import/BKK">Import/BKK (นำเข้า/กรุงเทพ)</option>
-          <option value="Import/LCB">Import/LCB (นำเข้า/แหลมฉบัง)</option>
-        </select>
-      </div>
-      <div class="col-4 col-md-1">
-        <label class="small text-muted mb-1">ปี</label>
-        <select id="filterYear" class="form-select form-select-sm" onchange="debouncedApplyFilters()">
-          <option value="">- ทุกปี -</option>
-          <option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option>
-        </select>
-      </div>
-      <div class="col-4 col-md-1">
-        <label class="small text-muted mb-1">เดือน</label>
-        <select id="filterMonth" class="form-select form-select-sm" onchange="debouncedApplyFilters()">
-          <option value="">- ทุกเดือน -</option>
-          <option value="01">ม.ค.</option><option value="02">ก.พ.</option><option value="03">มี.ค.</option>
-          <option value="04">เม.ย.</option><option value="05">พ.ค.</option><option value="06">มิ.ย.</option>
-          <option value="07">ก.ค.</option><option value="08">ส.ค.</option><option value="09">ก.ย.</option>
-          <option value="10">ต.ค.</option><option value="11">พ.ย.</option><option value="12">ธ.ค.</option>
-        </select>
-      </div>
-      <div class="col-4 col-md-1">
-        <label class="small text-muted mb-1">วันที่</label>
-        <select id="filterDay" class="form-select form-select-sm" onchange="debouncedApplyFilters()">
-          <option value="">- วัน -</option>
-          <script>
-            for(let i=1; i<=31; i++) { let d = i<10 ? '0'+i : i; document.write(`<option value="${d}">${d}</option>`); }
-          </script>
-        </select>
-      </div>
-      <div class="col-6 col-md-1">
-        <label class="small text-muted mb-1">แสดงผล</label>
-        <select id="pageSize" class="form-select form-select-sm" onchange="currentPage=1; debouncedApplyFilters()">
-          <option value="30">30 ราย</option>
-          <option value="50" selected>50 ราย</option>
-          <option value="80">80 ราย</option>
-          <option value="100">100 ราย</option>
-          <option value="all">ทั้งหมด</option>
-        </select>
-      </div>
-      <div class="col-6 col-md-auto mt-2 mt-md-0 ms-md-auto">
-        <button class="btn btn-light btn-sm border text-secondary shadow-sm px-3 w-100 py-2 py-md-1" onclick="clearFilters()">
-            <i class="bi bi-arrow-counterclockwise"></i> ล้างกรอง
+  <!-- Main App -->
+  <div id="mainApp" class="container-fluid" style="display: none;">
+    <nav class="navbar navbar-expand-lg navbar-custom mb-2 shadow-sm rounded-bottom-3">
+      <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+          <div class="bg-primary text-white rounded p-1 d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
+            <i class="bi bi-box-seam fs-6"></i>
+          </div>
+          <span class="navbar-brand-text">Vachirawit <span>OS</span></span>
+        </a>
+        <button class="navbar-toggler border-0 shadow-none text-white" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+          <i class="bi bi-list fs-3"></i>
         </button>
-      </div>
-    </div>
-
-    <div class="table-responsive table-container shadow-sm bg-white mb-3">
-      <table class="table table-bordered table-hover text-nowrap mb-0 table-sm" id="dataTable" style="font-size: 12.5px;">
-        <thead class="table-dark sticky-top" id="tableHead" style="z-index: 10;"></thead>
-        <tbody id="tableBody"></tbody>
-      </table>
-    </div>
-
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3" id="paginationControls" style="display:none !important;">
-        <span class="small text-muted fw-bold" id="pageInfo">แสดงหน้า 1 จาก 1</span>
-        <div class="btn-group btn-group-sm shadow-sm w-100 w-md-auto">
-            <button class="btn btn-outline-secondary" onclick="changePage(-1)"><i class="bi bi-chevron-left"></i> ก่อนหน้า</button>
-            <button class="btn btn-outline-secondary" onclick="changePage(1)">ถัดไป <i class="bi bi-chevron-right"></i></button>
-        </div>
-    </div>
-  </div>
-</div>
-
-<div class="modal fade" id="pricingMasterModal" data-bs-backdrop="static">
-  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content border-0 shadow-lg">
-      <div class="modal-header text-dark" style="background-color: #fcd34d; padding: 12px 20px;">
-        <h5 class="modal-title fw-bold m-0"><i class="bi bi-cash-coin"></i> จัดการราคาน้ำมันและเรทค่าขนส่ง</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body bg-light p-0">
-        <ul class="nav nav-tabs bg-white pt-2 px-3 shadow-sm" role="tablist" style="font-size: 0.9rem;">
-          <li class="nav-item" role="presentation">
-            <button class="nav-link active fw-bold text-dark py-2" data-bs-toggle="tab" data-bs-target="#tab-fuel" type="button" role="tab">
-                <i class="bi bi-ev-station-fill text-warning"></i> อัปเดตราคาน้ำมัน
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0 gap-1 ms-3">
+            <li class="nav-item">
+              <button class="btn nav-btn-modern active" id="nav-plan" onclick="switchModule('plan')"><i class="bi bi-layout-text-sidebar-reverse me-1"></i>Controlplan</button>
+            </li>
+            <li class="nav-item">
+              <button class="btn nav-btn-modern" id="nav-invoice" onclick="switchModule('invoice')"><i class="bi bi-receipt-cutoff me-1"></i>Invoice</button>
+            </li>
+          </ul>
+          <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center text-white pe-3 border-end border-secondary border-opacity-25">
+              <i class="bi bi-person-circle text-primary fs-6 me-2"></i>
+              <span class="fw-bold small" id="displayUser"></span>
+            </div>
+            <button class="btn btn-sm btn-outline-secondary text-light border-secondary border-opacity-25 fw-bold rounded-2 px-2" onclick="forceSyncAll()">
+              <i class="bi bi-arrow-clockwise me-1"></i> ซิงค์
             </button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold text-dark py-2" data-bs-toggle="tab" data-bs-target="#tab-pricing" type="button" role="tab">
-                <i class="bi bi-file-earmark-spreadsheet-fill text-success"></i> ฐานข้อมูลราคา
+            <button class="btn btn-sm btn-danger fw-bold rounded-2 px-2" onclick="logout()">
+              <i class="bi bi-power me-1"></i> ออก
             </button>
-          </li>
-        </ul>
-
-        <div class="tab-content p-3 p-md-4">
-            <div class="tab-pane fade show active" id="tab-fuel" role="tabpanel">
-                <div class="card p-3 border-0 shadow-sm mb-3 compact-form">
-                    <h6 class="fw-bold text-warning mb-2 fs-6"><i class="bi bi-plus-circle-fill"></i> เพิ่มราคาน้ำมันใหม่</h6>
-                    <div class="row g-2 align-items-end">
-                        <div class="col-12 col-md-4">
-                            <label class="fw-bold">วันที่มีผลบังคับใช้</label>
-                            <input type="date" id="newFuelDate" class="form-control form-control-sm border-warning">
-                        </div>
-                        <div class="col-12 col-md-5">
-                            <label class="fw-bold">ราคาน้ำมัน (บาท)</label>
-                            <input type="number" id="newFuelPrice" class="form-control form-control-sm border-warning fw-bold text-danger" step="0.01" placeholder="เช่น 31.50">
-                        </div>
-                        <div class="col-12 col-md-3 mt-3 mt-md-0 text-end">
-                            <button class="btn btn-warning btn-sm fw-bold w-100 shadow-sm py-2 py-md-1" onclick="saveFuelLog()">
-                                <i class="bi bi-cloud-arrow-up-fill"></i> บันทึกข้อมูล
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card p-3 border-0 shadow-sm">
-                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 flex-wrap gap-2">
-                        <h6 class="fw-bold text-secondary mb-0 fs-6"><i class="bi bi-clock-history"></i> ประวัติย้อนหลัง</h6>
-                        <div class="d-flex gap-2 w-100 w-md-auto">
-                            <select id="fuelMonthFilter" class="form-select form-select-sm flex-grow-1 flex-md-grow-0" style="min-width: 110px;" onchange="renderFuelHistory()">
-                                <option value="">- ทุกเดือน -</option>
-                                <option value="0">ม.ค.</option><option value="1">ก.พ.</option><option value="2">มี.ค.</option><option value="3">เม.ย.</option>
-                                <option value="4">พ.ค.</option><option value="5">มิ.ย.</option><option value="6">ก.ค.</option><option value="7">ส.ค.</option>
-                                <option value="8">ก.ย.</option><option value="9">ต.ค.</option><option value="10">พ.ย.</option><option value="11">ธ.ค.</option>
-                            </select>
-                            <select id="fuelYearFilter" class="form-select form-select-sm flex-grow-1 flex-md-grow-0" style="min-width: 90px;" onchange="renderFuelHistory()">
-                                <option value="">- ทุกปี -</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="table-responsive bg-white border rounded" style="max-height: 40vh;">
-                        <table class="table table-hover table-bordered mb-0 align-middle text-center table-sm" style="font-size: 13px;">
-                            <thead class="table-light sticky-top">
-                                <tr><th>วันที่มีผล</th><th>ราคาน้ำมัน (บาท)</th><th style="width: 100px;">จัดการ</th></tr>
-                            </thead>
-                            <tbody id="fuelHistoryBody"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="tab-pane fade" id="tab-pricing" role="tabpanel">
-                <div class="alert alert-info border-0 shadow-sm mb-3">
-                    <h6 class="fw-bold text-info-emphasis m-0"><i class="bi bi-info-circle-fill"></i> แจ้งเตือนการจัดการราคาค่าขนส่ง</h6>
-                    <small class="text-dark">เนื่องจากโครงสร้างราคาของลูกค้าเป็นรูปแบบตาราง <b>Matrix (แนวนอน)</b> ซึ่งมีช่วงราคาน้ำมันเปลี่ยนแปลงได้ การเพิ่ม/ลด/แก้ไขราคา <b>กรุณาทำใน Google Sheet โดยตรง</b> ในแท็บ <kbd>Pricing</kbd> เพื่อป้องกันความผิดพลาดครับ</small>
-                </div>
-
-                <div class="card p-3 border-0 shadow-sm compact-form">
-                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2">
-                        <h6 class="fw-bold text-secondary mb-0 fs-6"><i class="bi bi-table"></i> ตารางเงื่อนไขราคาปัจจุบัน</h6>
-                        <input type="text" id="searchRule" class="form-control form-control-sm w-100 w-md-auto" placeholder="🔍 ค้นหาลูกค้า/สถานที่..." onkeyup="debouncedFilterPricingTable()">
-                    </div>
-                    <div class="table-responsive bg-white border rounded" style="max-height: 50vh;">
-                        <table class="table table-hover table-bordered mb-0 align-middle text-center text-nowrap table-sm" style="font-size: 12.5px;">
-                            <thead class="table-success sticky-top">
-                                <tr>
-                                    <th>Customer</th><th>Type</th><th>CY Place</th><th>Load/Unload</th><th>RTN Place</th>
-                                    <th>เงื่อนไขน้ำมัน</th><th>ช่วงราคาน้ำมัน</th><th>ราคา (บาท)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="pricingRulesBody"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+          </div>
         </div>
       </div>
-      <div class="modal-footer bg-white border-top-0 pt-0 pb-3">
-        <button type="button" class="btn btn-light border rounded-pill px-4 w-100 w-md-auto" data-bs-dismiss="modal">ปิดหน้าต่าง</button>
-      </div>
-    </div>
-  </div>
-</div>
+    </nav>
 
-<div class="modal fade" id="logModal">
-  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content border-0 shadow-lg">
-      <div class="modal-header bg-info text-white">
-        <h5 class="modal-title fw-bold"><i class="bi bi-clock-history"></i> ประวัติการทำงาน (Activity Log)</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body bg-light p-3 p-md-4">
-        <div class="table-responsive bg-white rounded shadow-sm border" style="max-height: 60vh;">
-            <table class="table table-bordered table-striped mb-0 text-nowrap" style="font-size: 13px;">
-                <thead style="background-color: #0dcaf0; color: white; position: sticky; top: 0; z-index: 1;">
-                    <tr><th>วัน-เวลา</th><th>ผู้ใช้</th><th>การทำงาน</th><th>รายละเอียด</th></tr>
-                </thead>
-                <tbody id="logTableBody"><tr><td colspan="4" class="text-center py-4">กำลังโหลดข้อมูล...</td></tr></tbody>
-            </table>
+    <!-- Controlplan Module -->
+    <div id="module-plan" class="slide-up">
+      <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-2 mb-2">
+        <div class="d-flex flex-wrap flex-md-nowrap gap-2 flex-grow-1">
+          <div class="stat-card blue" onclick="showCSBreakdown('total')">
+            <div class="icon-wrapper"><i class="bi bi-boxes"></i></div>
+            <div class="stat-info"><span class="stat-value" id="sumTotal">0</span><span class="stat-label">ตู้ทั้งหมด (ใบ)</span></div>
+          </div>
+          <div class="stat-card orange" onclick="showCSBreakdown('pending')">
+            <div class="icon-wrapper"><i class="bi bi-clock-history"></i></div>
+            <div class="stat-info"><span class="stat-value" id="sumPending">0</span><span class="stat-label">รอจัดรถ</span></div>
+          </div>
+          <div class="stat-card green" onclick="showCSBreakdown('done')">
+            <div class="icon-wrapper"><i class="bi bi-truck"></i></div>
+            <div class="stat-info"><span class="stat-value" id="sumDone">0</span><span class="stat-label">กำลังวิ่งงาน</span></div>
+          </div>
+          <div class="stat-card purple" onclick="showCSBreakdown('finished')">
+            <div class="icon-wrapper"><i class="bi bi-check2-all"></i></div>
+            <div class="stat-info"><span class="stat-value" id="sumFinished">0</span><span class="stat-label">จบงานแล้ว</span></div>
+          </div>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+          <div class="dropdown">
+            <button class="btn btn-modern-outline" type="button" data-bs-toggle="dropdown"><i class="bi bi-grid-fill text-secondary me-1"></i>ตั้งค่าระบบ</button>
+            <ul class="dropdown-menu shadow-lg border-0 mt-2">
+              <li><a class="dropdown-item py-2 fw-bold text-success" href="javascript:void(0)" onclick="openBatchTruckModal()"><i class="bi bi-truck me-2"></i> จัดการรถ (Batch)</a></li>
+              <li><a class="dropdown-item py-2 fw-bold text-warning" href="javascript:void(0)" onclick="openPricingMasterModal()"><i class="bi bi-ev-station-fill me-2"></i> จัดการราคาน้ำมัน</a></li>
+              <li><a class="dropdown-item py-2 fw-bold text-primary" href="javascript:void(0)" onclick="openCustomerModal()"><i class="bi bi-people-fill me-2"></i> จัดการลูกค้า</a></li>
+              <li><a class="dropdown-item py-2 fw-bold text-info" href="javascript:void(0)" onclick="openLogModal()"><i class="bi bi-clock-history me-2"></i> ประวัติการทำงาน</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item py-2 fw-bold text-danger" href="javascript:void(0)" onclick="openDeleteBookingModal()"><i class="bi bi-trash-fill me-2"></i> ลบ Booking</a></li>
+            </ul>
+          </div>
+          <button class="btn btn-modern-primary" data-bs-toggle="modal" data-bs-target="#addModal" onclick="clearForm()"><i class="bi bi-plus-lg me-1"></i>สร้าง Booking</button>
         </div>
       </div>
-      <div class="modal-footer bg-white">
-        <button type="button" class="btn btn-light border rounded-pill w-100 w-md-auto px-4" data-bs-dismiss="modal">ปิด</button>
-      </div>
-    </div>
-  </div>
-</div>
 
-<div class="modal fade" id="batchTruckModal" data-bs-backdrop="static">
-  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content border-0">
-      <div class="modal-header bg-success text-white">
-        <h5 class="modal-title fw-bold"><i class="bi bi-truck-flatbed"></i> จัดการรถ (Batch)</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body bg-light p-3 p-md-4">
-        <div class="alert alert-success d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center py-3 px-3 shadow-sm border-0 gap-3 mb-3">
-            <div><span class="fw-bold">รอจัดรถทั้งหมด: <span id="batchCount" class="badge bg-success fs-6 rounded-pill">0</span> ใบ</span></div>
-            <div class="d-flex flex-column flex-md-row flex-wrap gap-2 w-100 w-md-auto justify-content-start justify-content-md-end">
-                <div class="input-group input-group-sm bg-white rounded shadow-sm w-100" style="max-width: 100%;">
-                    <span class="input-group-text bg-white"><i class="bi bi-person-badge text-success"></i></span>
-                    <select id="batchCsFilter" class="form-select text-success fw-bold py-2 py-md-1" onchange="renderBatchTruckTable()"><option value="">- ทุก CS -</option></select>
-                </div>
-                <div class="input-group input-group-sm bg-white rounded shadow-sm w-100" style="max-width: 100%;">
-                    <span class="input-group-text bg-white"><i class="bi bi-calendar3 text-success"></i></span>
-                    <input type="date" id="batchDateFilter" class="form-control py-2 py-md-1" onchange="renderBatchTruckTable()">
-                    <button class="btn btn-outline-secondary" onclick="document.getElementById('batchDateFilter').value=''; renderBatchTruckTable();"><i class="bi bi-x-lg"></i></button>
-                </div>
-            </div>
-        </div>
-        <div class="table-responsive bg-white rounded shadow-sm border" style="max-height: 55vh;">
-            <table class="table table-bordered align-middle mb-0 text-nowrap" style="font-size: 13px;">
-                <thead style="background-color: #10b981; color: white; position: sticky; top: 0; z-index: 2;">
-                    <tr><th>วันที่</th><th>BKG / CS / ลูกค้า</th><th class="text-center">ประเภท</th><th>สถานที่ (รับ <i class="bi bi-arrow-right"></i> คืน)</th><th class="text-center">สถานะ</th><th>ทะเบียนรถ</th><th>เบอร์ตู้ (Container)</th></tr>
-                </thead>
-                <tbody id="batchTruckBody"></tbody>
-            </table>
-        </div>
-      </div>
-      <div class="modal-footer bg-white">
-        <button type="button" class="btn btn-light border rounded-pill w-100 w-md-auto mb-2 mb-md-0" data-bs-dismiss="modal">ยกเลิก</button>
-        <button type="button" class="btn btn-success px-4 fw-bold rounded-pill w-100 w-md-auto" onclick="saveBatchTruckMulti()"><i class="bi bi-floppy-fill"></i> บันทึกการจัดรถ</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="modal fade" id="addModal" data-bs-backdrop="static">
-  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header text-white" style="background: linear-gradient(45deg, #1e293b, #334155);">
-        <h5 class="modal-title fw-bold"><i class="bi bi-journal-plus"></i> บันทึกข้อมูล Booking รถ</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body bg-light p-3 p-md-4 compact-form">
-        
-        <h6 class="fw-bold text-primary mb-2"><i class="bi bi-1-circle-fill"></i> ข้อมูลหลัก (Master Data)</h6>
-        <div class="row g-2 mb-3 p-2 p-md-3 bg-white rounded shadow-sm border">
+      <div class="card p-2 mb-2 border-0 shadow-sm rounded-3">
+        <div class="row g-2 mb-2 align-items-end">
+          <div class="col-12 col-md-3">
+            <input type="text" id="filterText" class="form-control form-control-sm" placeholder="ค้นหาทั่วไป..." onkeyup="debouncedApplyFilters()">
+          </div>
           <div class="col-6 col-md-2">
-              <label class="fw-bold">วันที่เข้าโรงงาน</label>
-              <input type="date" id="date" class="form-control form-control-sm" onchange="updateAllRowPrices()">
-          </div>
-          <div class="col-6 col-md-3">
-              <label class="fw-bold">CS (ผู้บันทึก) <i class="bi bi-lock-fill text-secondary"></i></label>
-              <input type="text" id="cs" class="form-control form-control-sm bg-light text-primary fw-bold border-primary" readonly>
-          </div>
-          <div class="col-12 col-md-2">
-            <label class="fw-bold">Mode</label>
-            <select id="mode" class="form-select form-select-sm">
-              <option value="BKK">BKK (กรุงเทพ)</option>
-              <option value="LCB">LCB (แหลมฉบัง)</option>
-              <option value="Export/BKK" selected>Export/BKK (ส่งออก/กรุงเทพ)</option>
-              <option value="Export/LCB">Export/LCB (ส่งออก/แหลมฉบัง)</option>
-              <option value="Import/BKK">Import/BKK (นำเข้า/กรุงเทพ)</option>
-              <option value="Import/LCB">Import/LCB (นำเข้า/แหลมฉบัง)</option>
+            <select id="filterStatus" class="form-select form-select-sm" onchange="debouncedApplyFilters()">
+              <option value="">- ทุกสถานะ -</option>
+              <option value="รอจัดรถ">รอจัดรถ</option>
+              <option value="จัดรถแล้ว">จัดรถแล้ว</option>
+              <option value="กำลังไปรับตู้">กำลังไปรับตู้</option>
+              <option value="ดรอปตู้ (รอบรรจุ)">ดรอปตู้ (รอบรรจุ)</option>
+              <option value="กำลังบรรจุ/เปิดตู้">กำลังบรรจุ/เปิดตู้</option>
+              <option value="ดรอปตู้ (รอคืน)">ดรอปตู้ (รอคืน)</option>
+              <option value="กำลังไปคืนตู้">กำลังไปคืนตู้</option>
+              <option value="คืนตู้แล้ว">คืนตู้แล้ว</option>
+              <option value="จบงานรอวางบิล">จบงานรอวางบิล</option>
+              <option value="พร้อมวางบิล">พร้อมวางบิล</option>
+              <option value="วางบิลแล้ว">วางบิลแล้ว</option>
             </select>
           </div>
-          <div class="col-12 col-md-3">
-              <label class="fw-bold">AGENT</label>
-              <div class="input-group input-group-sm">
-                  <input type="text" id="agent" list="agentDataList" class="form-control border-secondary py-2 py-md-1" placeholder="พิมพ์หรือเลือก...">
-                  <button class="btn btn-outline-secondary" type="button" onclick="addNewSetting('AGENT')" title="เพิ่ม AGENT ใหม่"><i class="bi bi-plus-lg"></i></button>
-              </div>
+          <div class="col-6 col-md-2">
+            <select id="filterMonth" class="form-select form-select-sm" onchange="debouncedApplyFilters()">
+              <option value="">- ทุกเดือน -</option>
+              <option value="01">ม.ค.</option><option value="02">ก.พ.</option><option value="03">มี.ค.</option>
+              <option value="04">เม.ย.</option><option value="05">พ.ค.</option><option value="06">มิ.ย.</option>
+              <option value="07">ก.ค.</option><option value="08">ส.ค.</option><option value="09">ก.ย.</option>
+              <option value="10">ต.ค.</option><option value="11">พ.ย.</option><option value="12">ธ.ค.</option>
+            </select>
           </div>
-          <div class="col-12 col-md-2">
-              <label class="fw-bold">VGM</label>
-              <input type="text" id="vgm" class="form-control form-control-sm">
+          <div class="col-6 col-md-2">
+            <select id="pageSize" class="form-select form-select-sm" onchange="currentPage=1; debouncedApplyFilters()">
+              <option value="30">30</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+              <option value="all">ทั้งหมด</option>
+            </select>
           </div>
-          
-          <div class="col-12 col-md-4 mt-2">
-              <label class="fw-bold">Customer (ลูกค้าหน้างาน) <span class="text-danger">*</span></label>
-              <input type="text" id="customer" list="customerList" class="form-control form-control-sm border-primary" placeholder="พิมพ์ชื่อย่อ..." onchange="handleCustomerSelect(); updateAllRowPrices(); autoFillBillingNamesAdd(); mapToFullName(this);">
-          </div>
-          <div class="col-12 col-md-4 mt-2">
-              <label class="fw-bold text-primary">ลูกค้าวางบิล (Bill To)</label>
-              <input type="text" id="billTo" list="companyList" class="form-control form-control-sm border-primary bg-light" placeholder="ออกบิลเก็บเงินในนาม..." onchange="mapToFullName(this)">
-          </div>
-          <div class="col-12 col-md-4 mt-2">
-              <label class="fw-bold text-success">ชื่อออกใบเสร็จ (Receipt Name)</label>
-              <input type="text" id="receiptName" list="companyList" class="form-control form-control-sm border-success bg-light" placeholder="ขอใบเสร็จลานในนาม..." onchange="mapToFullName(this)">
-          </div>
-
-          <div class="col-12 col-md-4 mt-2">
-              <label class="fw-bold">สถานที่บรรจุ/เปิดตู้ (Load) <span class="text-danger">*</span></label>
-              <input type="text" id="loadPlace" list="loadPlaceList" class="form-control form-control-sm border-primary" onchange="updateAllRowPrices()">
-          </div>
-          <div class="col-12 col-md-4 mt-2">
-              <label class="fw-bold">Booking No. <span class="text-danger">*</span></label>
-              <input type="text" id="booking" class="form-control form-control-sm border-danger fw-bold text-primary" style="background-color: #fff1f2;">
-          </div>
-          <div class="col-12 col-md-4 mt-2">
-              <label class="fw-bold">Closing Time</label>
-              <input type="text" id="closing" class="form-control form-control-sm datetime-24h" placeholder="เลือกเวลา (พิมพ์ได้)">
+          <div class="col-6 col-md-3 d-flex gap-2">
+            <button class="btn btn-light btn-sm border text-secondary shadow-sm w-100 fw-bold" onclick="clearFilters()"><i class="bi bi-arrow-counterclockwise"></i> ล้าง</button>
+            <button class="btn btn-success btn-sm border shadow-sm w-100 fw-bold" onclick="exportToExcel()"><i class="bi bi-file-excel"></i> Excel</button>
           </div>
         </div>
-
-        <h6 class="fw-bold text-primary mb-2"><i class="bi bi-2-circle-fill"></i> สถานที่รับ/คืนตู้ (ค่าเริ่มต้น)</h6>
-        <div class="row g-2 mb-3 p-2 p-md-3 bg-white rounded shadow-sm border border-start border-4 border-info">
-          <div class="col-6 col-md-3">
-              <label class="fw-bold small text-muted mb-1">CY Place (รับตู้)</label>
-              <input type="text" id="defCyPlace" list="cyPlaceList" class="form-control form-control-sm" onchange="updateAllRowPrices()">
-          </div>
-          <div class="col-6 col-md-3">
-              <label class="fw-bold small text-muted mb-1">CY Date</label>
-              <input type="date" id="defCyDate" class="form-control form-control-sm">
-          </div>
-          <div class="col-6 col-md-3">
-              <label class="fw-bold small text-muted mb-1">RTN Place (คืนตู้)</label>
-              <input type="text" id="defRtnPlace" list="rtnPlaceList" class="form-control form-control-sm" onchange="updateAllRowPrices()">
-          </div>
-          <div class="col-6 col-md-3">
-              <label class="fw-bold small text-muted mb-1">RTN Date</label>
-              <input type="date" id="defRtnDate" class="form-control form-control-sm">
-          </div>
-          
-          <div class="col-12 my-1"><hr class="m-0 text-muted opacity-25"></div>
-          
-          <div class="col-6 col-md-3">
-              <label class="text-danger fw-bold small">จำนวนตู้ 20' (ใบ)</label>
-              <input type="number" id="qty20" class="form-control form-control-sm border-danger mb-2" value="0" min="0">
-          </div>
-          <div class="col-6 col-md-3">
-              <label class="text-success fw-bold small">กำหนดราคา 20' (บาท)</label>
-              <input type="number" id="manualPrice20" class="form-control form-control-sm border-success bg-success bg-opacity-10 mb-2" placeholder="ปล่อยว่างหากมีราคาในระบบ">
-          </div>
-          
-          <div class="col-6 col-md-3">
-              <label class="text-danger fw-bold small">จำนวนตู้ 40' (ใบ)</label>
-              <input type="number" id="qty40" class="form-control form-control-sm border-danger mb-2" value="0" min="0">
-          </div>
-          <div class="col-6 col-md-3">
-              <label class="text-success fw-bold small">กำหนดราคา 40' (บาท)</label>
-              <input type="number" id="manualPrice40" class="form-control form-control-sm border-success bg-success bg-opacity-10 mb-2" placeholder="ปล่อยว่างหากมีราคาในระบบ">
-          </div>
-
-          <div class="col-12 mt-2">
-              <button class="btn btn-warning fw-bold w-100 shadow-sm rounded-3 py-3 py-md-2" style="font-size: 1.05rem;" onclick="generateRows()">
-                  <i class="bi bi-lightning-charge-fill"></i> กดเพื่อสร้างรายการตู้
-              </button>
-          </div>
+        <div class="table-responsive table-container rounded-2 border">
+          <table class="table table-hover text-nowrap mb-0 table-sm" id="dataTable">
+            <thead class="table-light sticky-top" id="tableHead"></thead>
+            <tbody id="tableBody"></tbody>
+          </table>
         </div>
-        
-        <h6 class="fw-bold text-primary mb-2"><i class="bi bi-3-circle-fill"></i> ข้อมูลย่อยรายตู้ <span class="text-danger small ms-2">* ถ้าสถานะไม่ใช่ "รอจัดรถ" ต้องใส่ ทะเบียน และ เบอร์ตู้</span></h6>
-        <div id="container-rows">
-            <div class="alert alert-secondary text-center border-0 border-start border-4 border-secondary shadow-sm py-4">
-                <i class="bi bi-info-circle"></i> กรุณากรอกข้อมูลด้านบน และกดปุ่ม "สร้างรายการตู้"
-            </div>
-        </div>
-      </div>
-      <div class="modal-footer bg-white">
-        <button type="button" class="btn btn-light border rounded-pill w-100 w-md-auto mb-2 mb-md-0" data-bs-dismiss="modal">ยกเลิก</button>
-        <button type="button" class="btn btn-gradient px-4 rounded-pill fw-bold w-100 w-md-auto py-2" onclick="saveData()">
-            <i class="bi bi-floppy-fill"></i> บันทึกข้อมูลใหม่
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="modal fade" id="editModal" data-bs-backdrop="static">
-  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content border-0 shadow-lg">
-      <div class="modal-header text-white" style="background-color: #475569;">
-        <h5 class="modal-title fw-bold"><i class="bi bi-gear-fill"></i> รายละเอียดตู้ <span id="eTitleBkg" class="text-warning"></span></h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body bg-light p-3 p-md-4 compact-form">
-        <input type="hidden" id="eRowIndex"> 
-        <div class="row g-2">
-          <div class="col-6 col-md-4">
-              <label class="fw-bold">วันที่เข้าโรงาน</label>
-              <input type="date" id="eDate" class="form-control form-control-sm" onchange="autoCalcEditPrice()">
+        <div class="d-flex justify-content-between align-items-center mt-2" id="paginationControls" style="display:none !important;">
+          <span class="small text-muted fw-bold" id="pageInfo">แสดงหน้า 1 จาก 1</span>
+          <div class="btn-group btn-group-sm shadow-sm">
+            <button class="btn btn-outline-secondary" onclick="changePage(-1)"><i class="bi bi-chevron-left"></i></button>
+            <button class="btn btn-outline-secondary" onclick="changePage(1)"><i class="bi bi-chevron-right"></i></button>
           </div>
-          <div class="col-6 col-md-4">
-              <label class="fw-bold">CS (เจ้าของงาน) <i class="bi bi-lock-fill text-secondary"></i></label>
-              <input type="text" id="eCS" class="form-control form-control-sm bg-light text-primary fw-bold border-primary" readonly>
-          </div>
-          <div class="col-12 col-md-4 mt-2 mt-md-0">
-              <label class="fw-bold">ประเภทตู้</label>
-              <input type="text" id="eType" class="form-control form-control-sm" onchange="autoCalcEditPrice()">
-          </div>
-          
-          <div class="col-12 col-md-3 mt-2 mt-md-0">
-              <label class="fw-bold">Mode</label>
-              <select id="eMode" class="form-select form-select-sm" onchange="autoCalcEditPrice()">
-                  <option value="BKK">BKK (กรุงเทพ)</option>
-                  <option value="LCB">LCB (แหลมฉบัง)</option>
-                  <option value="Export/BKK">Export/BKK (ส่งออก/กรุงเทพ)</option>
-                  <option value="Export/LCB">Export/LCB (ส่งออก/แหลมฉบัง)</option>
-                  <option value="Import/BKK">Import/BKK (นำเข้า/กรุงเทพ)</option>
-                  <option value="Import/LCB">Import/LCB (นำเข้า/แหลมฉบัง)</option>
-              </select>
-          </div>
-          
-          <div class="col-12 col-md-3 mt-2 mt-md-0">
-              <label class="fw-bold">Customer (ผู้สั่งงาน)</label>
-              <input type="text" id="eCustomer" list="customerList" class="form-control form-control-sm" placeholder="พิมพ์ชื่อย่อ..." onchange="autoCalcEditPrice(); autoFillBillingNamesEdit(); mapToFullName(this);">
-          </div>
-          <div class="col-12 col-md-3 mt-2 mt-md-0">
-              <label class="fw-bold text-primary">ลูกค้าวางบิล (Bill To)</label>
-              <input type="text" id="eBillTo" list="companyList" class="form-control form-control-sm border-primary bg-light" placeholder="ออกบิลในนาม..." onchange="mapToFullName(this)">
-          </div>
-          <div class="col-12 col-md-3 mt-2 mt-md-0">
-              <label class="fw-bold text-success">ชื่อออกใบเสร็จ</label>
-              <input type="text" id="eReceiptName" list="companyList" class="form-control form-control-sm border-success bg-light" placeholder="ขอใบเสร็จลานในนาม..." onchange="mapToFullName(this)">
-          </div>
-
-          <div class="col-12 col-md-4 mt-2 mt-md-0">
-              <label class="fw-bold">สถานที่ (Load/Unload)</label>
-              <input type="text" id="eLoad" list="loadPlaceList" class="form-control form-control-sm" onchange="autoCalcEditPrice()">
-          </div>
-          <div class="col-12 col-md-4 mt-2 mt-md-0">
-              <label class="fw-bold">Booking No.</label>
-              <input type="text" id="eBooking" class="form-control form-control-sm border-primary fw-bold text-primary" style="background-color: #f0f9ff;">
-          </div>
-          <div class="col-12 col-md-4 mt-2 mt-md-0">
-              <label class="fw-bold text-primary">เบอร์ตู้ (Container No.) <span class="text-danger">*</span></label>
-              <input type="text" id="eContainerNo" class="form-control form-control-sm border-primary fw-bold text-primary" style="background-color: #f0f9ff;" placeholder="ระบุเบอร์ตู้">
-          </div>
-          
-          <div class="col-12 col-md-4 mt-2 mt-md-0">
-              <label class="fw-bold">Closing Time</label>
-              <input type="text" id="eClosing" class="form-control form-control-sm datetime-24h" placeholder="เลือกเวลา (พิมพ์ได้)">
-          </div>
-          <div class="col-6 col-md-4 mt-2 mt-md-0">
-              <label class="fw-bold">CY Place</label>
-              <input type="text" id="eCyP" list="cyPlaceList" class="form-control form-control-sm border-info" onchange="autoCalcEditPrice()">
-          </div>
-          <div class="col-6 col-md-4 mt-2 mt-md-0">
-              <label class="fw-bold">CY Date</label>
-              <input type="date" id="eCyD" class="form-control form-control-sm border-info">
-          </div>
-          <div class="col-6 col-md-4 mt-2 mt-md-0">
-              <label class="fw-bold">RTN Place</label>
-              <input type="text" id="eRtnP" list="rtnPlaceList" class="form-control form-control-sm border-warning" onchange="autoCalcEditPrice()">
-          </div>
-          <div class="col-6 col-md-4 mt-2 mt-md-0">
-              <label class="fw-bold">RTN Date</label>
-              <input type="date" id="eRtnD" class="form-control form-control-sm border-warning">
-          </div>
-          <div class="col-12 col-md-4 mt-2 mt-md-0">
-              <label class="fw-bold">VGM</label>
-              <input type="text" id="eVGM" class="form-control form-control-sm">
-          </div>
-          <div class="col-12 col-md-8 mt-2 mt-md-0">
-              <label class="fw-bold">AGENT</label>
-              <div class="input-group input-group-sm">
-                  <input type="text" id="eAgent" list="agentDataList" class="form-control border-secondary" placeholder="พิมพ์หรือเลือก...">
-                  <button class="btn btn-outline-secondary" type="button" onclick="addNewSetting('AGENT')"><i class="bi bi-plus-lg"></i></button>
-              </div>
-          </div>
-          
-          <div class="col-12 col-md-4 mt-2 mt-md-0">
-              <label class="text-danger fw-bold w-100 d-flex justify-content-between align-items-end">
-                  <span><i class="bi bi-tag-fill"></i> ราคา/ตู้</span>
-                  <div>
-                      <a href="javascript:void(0)" onclick="autoCalcEditPrice()" class="text-decoration-none text-primary me-2" style="font-size: 0.7rem;" title="ดึงราคาใหม่เฉพาะตู้นี้"><i class="bi bi-arrow-clockwise"></i> ตู้นี้</a>
-                      <a href="javascript:void(0)" onclick="updatePriceEntireBooking()" class="text-decoration-none text-danger" style="font-size: 0.7rem;" title="อัปเดตราคาใหม่ให้ทุกตู้ใน Booking นี้"><i class="bi bi-check2-all"></i> ทั้ง BKG</a>
-                  </div>
-              </label>
-              <input type="number" id="ePrice" class="form-control form-control-sm border-danger fw-bold text-success" value="0">
-          </div>
-
-          <div class="col-12 col-md-12 mt-2 mt-md-0">
-              <label class="text-danger fw-bold">หมายเหตุ (Comment)</label>
-              <input type="text" id="eComment" class="form-control form-control-sm border-danger">
-          </div>
-        </div>
-
-        <hr class="my-3 text-muted">
-        <h6 class="fw-bold text-secondary mb-2"><i class="bi bi-cash-stack"></i> ค่าใช้จ่ายเพิ่มเติม (สำรองจ่าย / หักเพิ่ม)</h6>
-        
-        <div class="row g-2 mb-2 pb-2 border-bottom">
-           <div class="col-4 col-md-2">
-             <label class="small fw-bold text-muted">ค่ารับตู้</label>
-             <input type="number" id="eExp1" class="form-control form-control-sm">
-           </div>
-           <div class="col-4 col-md-2">
-             <label class="small fw-bold text-muted">ค่าคืนตู้</label>
-             <input type="number" id="eExp2" class="form-control form-control-sm">
-           </div>
-           <div class="col-4 col-md-2">
-             <label class="small fw-bold text-muted">ต่อระยะ</label>
-             <input type="number" id="eExp3" class="form-control form-control-sm">
-           </div>
-           <div class="col-4 col-md-2">
-             <label class="small fw-bold text-muted">ค้างหาง</label>
-             <input type="number" id="eExp4" class="form-control form-control-sm">
-           </div>
-           <div class="col-4 col-md-2">
-             <label class="small fw-bold text-muted">เสียเวลา</label>
-             <input type="number" id="eExp5" class="form-control form-control-sm">
-           </div>
-           <div class="col-4 col-md-2">
-             <label class="small fw-bold text-info">ผ่านท่า/ลาน</label>
-             <input type="number" id="eExp6" class="form-control form-control-sm border-info">
-           </div>
-           <div class="col-4 col-md-2 mt-2 mt-md-0">
-             <label class="small fw-bold text-info">ซ่อมตู้</label>
-             <input type="number" id="eExp7" class="form-control form-control-sm border-info">
-           </div>
-           <div class="col-4 col-md-2 mt-2 mt-md-0">
-             <label class="small fw-bold text-info">ล้างตู้</label>
-             <input type="number" id="eExp8" class="form-control form-control-sm border-info">
-           </div>
-           <div class="col-4 col-md-2 mt-2 mt-md-0">
-             <label class="small fw-bold text-primary">ค่าชอ (Shore)</label>
-             <input type="number" id="eExp9" class="form-control form-control-sm border-primary">
-           </div>
-        </div>
-        
-        <div class="row g-2">
-           <div class="col-6 col-md-4">
-             <label class="small fw-bold text-secondary">ชื่อค่าใช้จ่ายอื่น 1</label>
-             <input type="text" id="eExp10Name" class="form-control form-control-sm" placeholder="ระบุชื่อ...">
-           </div>
-           <div class="col-6 col-md-2">
-             <label class="small fw-bold text-secondary">ยอดเงิน 1</label>
-             <input type="number" id="eExp10Val" class="form-control form-control-sm" placeholder="0">
-           </div>
-           <div class="col-6 col-md-4 mt-2 mt-md-0">
-             <label class="small fw-bold text-secondary">ชื่อค่าใช้จ่ายอื่น 2</label>
-             <input type="text" id="eExp11Name" class="form-control form-control-sm" placeholder="ระบุชื่อ...">
-           </div>
-           <div class="col-6 col-md-2 mt-2 mt-md-0">
-             <label class="small fw-bold text-secondary">ยอดเงิน 2</label>
-             <input type="number" id="eExp11Val" class="form-control form-control-sm" placeholder="0">
-           </div>
-        </div>
-
-        <div class="col-12 mt-3">
-            <div class="p-3 border rounded shadow-sm bg-white border-success">
-                <div class="row align-items-center justify-content-between g-2">
-                    <div class="col-12 col-md-4">
-                        <label class="fw-bold text-success d-block"><i class="bi bi-truck"></i> สถานะงาน</label>
-                        <select id="eTruckStatus" class="form-select form-select-sm border-success fw-bold text-success mt-1">
-                            <option value="รอจัดรถ">รอจัดรถ</option>
-                            <option value="จัดรถแล้ว">จัดรถแล้ว</option>
-                            <option value="จบงานรอวางบิล">จบงานรอวางบิล</option>
-                            <option value="พร้อมวางบิล" disabled>พร้อมวางบิล</option>
-                            <option value="วางบิลแล้ว" disabled>วางบิลแล้ว</option>
-                        </select>
-                    </div>
-                    <div class="col-12 col-md-4 mt-2 mt-md-0">
-                        <label class="fw-bold text-success">ทะเบียนรถ <span class="text-danger">*</span></label>
-                        <input type="text" id="eTruckPlate" class="form-control form-control-sm border-success" placeholder="ระบุทะเบียนรถ" oninput="if(this.value && document.getElementById('eTruckStatus').value === 'รอจัดรถ') document.getElementById('eTruckStatus').value = 'จัดรถแล้ว';">
-                    </div>
-                    <div class="col-12 col-md-4 mt-2 mt-md-0">
-                        <label class="fw-bold text-secondary">เลขที่ Invoice</label>
-                        <input type="text" id="eInvoiceNo" class="form-control form-control-sm bg-light text-primary fw-bold" readonly placeholder="-">
-                    </div>
-                </div>
-                <div class="text-danger small mt-2 fw-bold"><i class="bi bi-exclamation-circle"></i> หากสถานะไม่ใช่ "รอจัดรถ" ต้องระบุเบอร์ตู้และทะเบียนรถให้ครบถ้วน</div>
-                
-                <div class="row mt-3 pt-2 border-top" id="editLogSection" style="display: none;">
-                    <div class="col-12">
-                        <label class="fw-bold text-danger small"><i class="bi bi-info-circle"></i> ประวัติการแก้ไขตัวเลขจากฝั่งบัญชี (Billing)</label>
-                        <textarea id="eEditLog" class="form-control form-control-sm bg-light text-danger" rows="3" readonly></textarea>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-      </div>
-      <div class="modal-footer d-flex flex-column flex-md-row justify-content-between bg-white gap-2 gap-md-0">
-        <div class="w-100 w-md-auto d-flex flex-column flex-md-row gap-2">
-           <button type="button" class="btn btn-outline-danger rounded-pill fw-bold py-2 w-100 w-md-auto" id="btnDeleteSingle" onclick="deleteSingle()"><i class="bi bi-trash3-fill"></i> ลบตู้นี้</button>
-           <button type="button" class="btn btn-outline-primary rounded-pill fw-bold py-2 w-100 w-md-auto" id="btnFinishBooking" onclick="finishEntireBooking()"><i class="bi bi-check2-all"></i> จบงานทั้ง BKG</button>
-        </div>
-        <div class="w-100 w-md-auto d-flex flex-column flex-md-row gap-2 mt-2 mt-md-0">
-          <button type="button" class="btn btn-light border rounded-pill w-100 w-md-auto py-2" data-bs-dismiss="modal">ปิดหน้าต่าง</button>
-          <button type="button" class="btn btn-success px-4 rounded-pill fw-bold py-2 w-100 w-md-auto" id="btnSaveEdit" onclick="saveEdit()"><i class="bi bi-floppy-fill"></i> บันทึกแก้ไข</button>
         </div>
       </div>
     </div>
-  </div>
-</div>
 
-<div class="modal fade" id="deleteBookingModal">
-  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content border-0 shadow-lg">
-      <div class="modal-header bg-danger text-white">
-        <h5 class="modal-title fw-bold"><i class="bi bi-trash3-fill"></i> จัดการลบ Booking</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    <!-- Invoice Module -->
+    <div id="module-invoice" style="display: none;" class="slide-up">
+      <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+        <ul class="nav nav-pills modern-tabs shadow-sm" id="pills-tab">
+          <li class="nav-item">
+            <button class="nav-link active-audit" id="tab-audit" data-bs-target="#content-audit" onclick="renderAuditTab()"><i class="bi bi-clipboard-check me-1"></i>ตรวจสอบยอด</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" id="tab-invoice" data-bs-target="#content-invoice" onclick="renderReadyTab()"><i class="bi bi-file-earmark-text me-1"></i>เตรียมวางบิล</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" id="tab-history" data-bs-target="#content-history" onclick="loadHistory()"><i class="bi bi-clock-history me-1"></i>ประวัติเอกสาร</button>
+          </li>
+        </ul>
       </div>
-      <div class="modal-body bg-light p-3 p-md-4">
-         <div class="alert alert-warning border-0 shadow-sm d-flex flex-column flex-md-row align-items-center text-center text-md-start mb-3 gap-3">
-            <i class="bi bi-exclamation-triangle-fill fs-1 text-warning"></i>
-            <div><strong>ระวัง!</strong> การกดปุ่มลบ จะเป็นการลบรายการตู้ <b>ทั้งหมด</b> ภายใต้ Booking No. นั้นๆ ทันที</div>
-         </div>
-         <div class="mb-3">
-            <input type="text" id="searchDeleteModal" class="form-control border-danger py-2" placeholder="🔍 ค้นหา Booking No. หรือชื่อลูกค้า..." onkeyup="debouncedFilterDeleteModal()">
-         </div>
-         <div class="table-responsive bg-white rounded shadow-sm border" style="max-height: 50vh;">
-            <table class="table table-bordered table-hover align-middle mb-0 text-nowrap" style="font-size: 13px;">
-                <thead class="table-light sticky-top">
-                    <tr><th>Booking No.</th><th>ลูกค้า (Customer)</th><th class="text-center">จำนวนตู้รวม</th><th>สถานะงาน</th><th class="text-center">จัดการ</th></tr>
-                </thead>
-                <tbody id="deleteBookingBody"></tbody>
+
+      <div class="tab-content">
+        <!-- Audit Tab -->
+        <div class="tab-pane fade show active" id="content-audit">
+          <div class="card border-0 shadow-sm p-2 mb-2 rounded-3">
+            <div class="row g-2 align-items-end">
+              <div class="col-lg-3">
+                <input type="text" id="filterSearchA" class="form-control form-control-sm" placeholder="ค้นหา ตู้, Booking..." onkeyup="applyFilterAudit()">
+              </div>
+              <div class="col-lg-3">
+                <select id="filterCustomerA" class="form-select form-select-sm" onchange="applyFilterAudit()">
+                  <option value="">- ลูกค้าทั้งหมด -</option>
+                </select>
+              </div>
+              <div class="col-lg-2">
+                <select id="limitA" class="form-select form-select-sm text-primary fw-bold" onchange="renderAuditTab()">
+                  <option value="50" selected>50 รายการ</option>
+                  <option value="ALL">ทั้งหมด</option>
+                </select>
+              </div>
+              <div class="col-lg-4 d-flex gap-2">
+                <button class="btn btn-light btn-sm fw-bold w-100 border" onclick="clearFilterAudit()">ล้าง</button>
+                <button class="btn btn-warning btn-sm fw-bold text-white w-100 shadow-sm" onclick="saveAuditBulk()"><i class="bi bi-check-circle me-1"></i> อนุมัติ (<span id="selCountA">0</span>)</button>
+              </div>
+            </div>
+          </div>
+          <div class="table-container shadow-sm border rounded-2">
+            <table class="table table-hover align-middle mb-0 text-nowrap table-sm">
+              <thead class="table-light sticky-top border-bottom">
+                <tr>
+                  <th class="text-center" style="width: 40px;"><input type="checkbox" id="checkAllA" class="form-check-input" onclick="toggleAllAudit(this)"></th>
+                  <th>วันที่</th><th>CS</th><th>ลูกค้า</th><th>Booking</th><th class="text-center">ตู้</th><th class="text-end pe-3">ยอดประเมิน</th>
+                </tr>
+              </thead>
+              <tbody id="auditBody"></tbody>
             </table>
-         </div>
-      </div>
-      <div class="modal-footer bg-white">
-        <button type="button" class="btn btn-light border rounded-pill px-4 w-100 w-md-auto py-2" data-bs-dismiss="modal">ปิดหน้าต่าง</button>
+          </div>
+        </div>
+
+        <!-- Ready Tab -->
+        <div class="tab-pane fade" id="content-invoice" style="display: none;">
+          <div class="card border-0 shadow-sm p-2 mb-2 rounded-3">
+            <div class="row g-2 align-items-end">
+              <div class="col-lg-4">
+                <select id="filterCustomerR" class="form-select form-select-sm border-primary bg-primary bg-opacity-10 text-primary fw-bold" onchange="applyFilterReady()">
+                  <option value="">- เลือกลูกค้าเพื่อตั้งบิล -</option>
+                </select>
+              </div>
+              <div class="col-lg-4">
+                <input type="text" id="filterTextR" class="form-control form-control-sm" placeholder="ค้นหา Booking, ตู้..." onkeyup="applyFilterReady()">
+              </div>
+              <div class="col-lg-4 d-flex justify-content-end align-items-end">
+                <button class="btn btn-light btn-sm fw-bold px-4 border w-100" onclick="clearFilterReady()">ล้าง</button>
+              </div>
+            </div>
+          </div>
+          <div class="d-flex gap-2 mb-2 flex-wrap">
+            <div class="summary-box flex-fill py-1 px-2">
+              <div class="small text-muted fw-semibold mb-0">เลือกแล้ว</div>
+              <div class="fs-6 fw-bold text-dark"><span id="selCountR">0</span> BKG</div>
+            </div>
+            <div class="summary-box flex-fill py-1 px-2" style="background: #f0fdf4; border-color: #bbf7d0;">
+              <div class="small text-success fw-semibold mb-0">ค่าขนส่ง</div>
+              <div class="fs-6 fw-bold text-success">฿<span id="sumIncomeR">0.00</span></div>
+            </div>
+            <div class="summary-box flex-fill py-1 px-2" style="background: #fef2f2; border-color: #fecaca;">
+              <div class="small text-danger fw-semibold mb-0">สำรองจ่าย</div>
+              <div class="fs-6 fw-bold text-danger">฿<span id="sumAdvanceR">0.00</span></div>
+            </div>
+            <div class="summary-box grand-total flex-fill position-relative overflow-hidden py-1 px-2">
+              <div class="position-absolute top-0 end-0 opacity-25" style="transform: translate(10%, -20%);"><i class="bi bi-cash-stack" style="font-size: 2.5rem;"></i></div>
+              <div class="small fw-semibold mb-0 opacity-75">ยอดรวมสุทธิ</div>
+              <div class="fs-6 fw-bold">฿<span id="sumGrandR">0.00</span></div>
+            </div>
+            <div class="d-flex align-items-center">
+              <button class="btn btn-primary rounded-3 shadow-sm fw-bold px-3 h-100 btn-sm" onclick="generateInvoiceBulk()"><i class="bi bi-file-earmark-pdf-fill me-1"></i> สร้าง Invoice</button>
+            </div>
+          </div>
+          <div class="table-container shadow-sm border rounded-2">
+            <table class="table table-hover align-middle mb-0 text-nowrap table-sm">
+              <thead class="table-light sticky-top border-bottom">
+                <tr>
+                  <th class="text-center" style="width: 40px;"><input type="checkbox" id="checkAllR" class="form-check-input" onclick="toggleAllReady(this)"></th>
+                  <th>วันที่</th><th>ลูกค้า</th><th>Booking Number</th><th class="text-center">จำนวนตู้</th>
+                  <th class="text-end text-success">รายได้รวม</th><th class="text-end text-danger">สำรองจ่ายรวม</th>
+                  <th class="text-end text-primary pe-3">รวมสุทธิ</th><th class="text-center">ตั้งค่า</th>
+                </tr>
+              </thead>
+              <tbody id="readyBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- History Tab -->
+        <div class="tab-pane fade" id="content-history" style="display: none;">
+          <div class="card border-0 shadow-sm p-2 mb-2 rounded-3">
+            <div class="row g-2 align-items-center">
+              <div class="col-lg-3"><input type="text" id="hFilterText" class="form-control form-control-sm" placeholder="🔍 ค้นหาเลขบิล..." onkeyup="applyHistoryFilter()"></div>
+              <div class="col-lg-3">
+                <select id="hFilterCustomer" class="form-select form-select-sm" onchange="applyHistoryFilter()"><option value="">- ลูกค้า -</option></select>
+              </div>
+              <div class="col-lg-2">
+                <select id="hFilterMonth" class="form-select form-select-sm" onchange="applyHistoryFilter()">
+                  <option value="">- เดือน -</option><option value="01">ม.ค.</option><option value="02">ก.พ.</option><option value="03">มี.ค.</option>
+                  <option value="04">เม.ย.</option><option value="05">พ.ค.</option><option value="06">มิ.ย.</option>
+                  <option value="07">ก.ค.</option><option value="08">ส.ค.</option><option value="09">ก.ย.</option>
+                  <option value="10">ต.ค.</option><option value="11">พ.ย.</option><option value="12">ธ.ค.</option>
+                </select>
+              </div>
+              <div class="col-lg-2">
+                <select id="limitH" class="form-select form-select-sm" onchange="applyHistoryFilter()"><option value="50" selected>50 รายการ</option><option value="ALL">ทั้งหมด</option></select>
+              </div>
+              <div class="col-lg-2 text-end"><button class="btn btn-light btn-sm w-100 fw-bold border" onclick="clearHistoryFilters()">ล้าง</button></div>
+            </div>
+          </div>
+          <div class="table-container shadow-sm border rounded-2">
+            <table class="table table-hover align-middle text-nowrap mb-0 table-sm">
+              <thead class="table-light sticky-top border-bottom">
+                <tr>
+                  <th onclick="sortHistory('invoiceNo')">เลขที่ Invoice <i class="bi bi-arrow-down-up sort-icon ms-1"></i></th>
+                  <th onclick="sortHistory('date')">วันที่ <i class="bi bi-arrow-down-up sort-icon ms-1"></i></th>
+                  <th onclick="sortHistory('cs')">ผู้ดูแล <i class="bi bi-arrow-down-up sort-icon ms-1"></i></th>
+                  <th onclick="sortHistory('customer')">ลูกค้า <i class="bi bi-arrow-down-up sort-icon ms-1"></i></th>
+                  <th class="text-center" onclick="sortHistory('count')">ปริมาณ <i class="bi bi-arrow-down-up sort-icon ms-1"></i></th>
+                  <th class="text-end" onclick="sortHistory('totalAmount')">ยอดเงิน <i class="bi bi-arrow-down-up sort-icon ms-1"></i></th>
+                  <th class="text-center pe-3">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="historyBody"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<div class="modal fade" id="customerModal" data-bs-backdrop="static">
-  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content border-0 shadow-lg">
-      <div class="modal-header text-white" style="background: linear-gradient(45deg, #2563eb, #3b82f6);">
-        <h5 class="modal-title fw-bold"><i class="bi bi-people-fill"></i> จัดการฐานข้อมูลลูกค้า (Customer)</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body bg-light p-3 p-md-4">
-        
-        <div class="card p-3 border-0 shadow-sm mb-3">
-            <h6 class="fw-bold text-primary mb-2 fs-6"><i class="bi bi-person-plus-fill"></i> เพิ่มลูกค้าใหม่</h6>
-            <div class="row g-2 align-items-end compact-form">
-                <div class="col-12 col-md-3">
-                    <label class="fw-bold">ชื่อย่อ (Short Name) <span class="text-danger">*</span></label>
-                    <input type="text" id="newCustShort" class="form-control form-control-sm border-primary" placeholder="เช่น CPF">
-                </div>
-                <div class="col-12 col-md-9">
-                    <label class="fw-bold">ชื่อเต็มบริษัท (Full Legal Name)</label>
-                    <input type="text" id="newCustFull" class="form-control form-control-sm" placeholder="เช่น CPF (THAILAND) PUBLIC COMPANY LIMITED">
-                </div>
-                <div class="col-12 col-md-12">
-                    <label class="fw-bold">ที่อยู่ (Address)</label>
-                    <input type="text" id="newCustAddress" class="form-control form-control-sm" placeholder="บ้านเลขที่ ซอย ถนน แขวง เขต จังหวัด...">
-                </div>
-                <div class="col-12 col-md-4">
-                    <label class="fw-bold">Tax ID</label>
-                    <input type="text" id="newCustTax" class="form-control form-control-sm" placeholder="เลขประจำตัวผู้เสียภาษี">
-                </div>
-                <div class="col-12 col-md-3">
-                    <label class="fw-bold">เครดิต (วัน)</label>
-                    <input type="number" id="newCustCredit" class="form-control form-control-sm" placeholder="จำนวนวัน">
-                </div>
-                <div class="col-12 col-md-5">
-                    <label class="fw-bold">หมายเหตุ</label>
-                    <input type="text" id="newCustRemark" class="form-control form-control-sm" placeholder="ระบุหมายเหตุเพิ่มเติม (ถ้ามี)">
-                </div>
-                <div class="col-12 text-end mt-3">
-                    <button class="btn btn-primary btn-sm fw-bold px-4 py-2" onclick="addCustomerRecordJS()">
-                        <i class="bi bi-plus-circle"></i> บันทึกข้อมูลลูกค้า
-                    </button>
-                </div>
-            </div>
+  <!-- Modals -->
+  <div class="modal fade" id="addModal" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 1300px; width: 95%;">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-dark text-white py-2">
+          <h6 class="modal-title fw-bold m-0"><i class="bi bi-journal-plus me-2"></i>สร้าง Booking ใหม่</h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
-
-        <div class="card p-3 border-0 shadow-sm">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h6 class="fw-bold text-secondary mb-0 fs-6"><i class="bi bi-card-list"></i> รายชื่อลูกค้าในระบบ</h6>
-                <input type="text" id="searchCustomer" class="form-control form-control-sm w-auto" placeholder="🔍 ค้นหาลูกค้า..." onkeyup="debouncedRenderCustomerTable()">
+        <div class="modal-body bg-light p-3">
+          <div class="row g-3">
+            <div class="col-lg-6">
+              <div class="bg-white p-2 px-3 rounded-3 shadow-sm border mb-2">
+                <h6 class="fw-bold text-dark border-bottom pb-1 mb-2 fs-6"><i class="bi bi-person-lines-fill me-2 text-secondary"></i>1. ข้อมูลลูกค้า</h6>
+                <div class="row g-2">
+                  <div class="col-12"><label class="form-label fw-bold small text-muted mb-0">Customer <span class="text-danger">*</span></label><input type="text" id="customer" list="customerList" class="form-control form-control-sm border-start border-3 border-primary" onchange="handleCustomerSelect(); mapToFullName(this);"></div>
+                  <div class="col-sm-6"><label class="form-label fw-bold small text-muted mb-0">ลูกค้าวางบิล (Bill To)</label><input type="text" id="billTo" list="companyList" class="form-control form-control-sm bg-light" onchange="mapToFullName(this)"></div>
+                  <div class="col-sm-6"><label class="form-label fw-bold small text-muted mb-0">ชื่อออกใบเสร็จ</label><input type="text" id="receiptName" list="companyList" class="form-control form-control-sm bg-light" onchange="mapToFullName(this)"></div>
+                </div>
+              </div>
+              <div class="bg-white p-2 px-3 rounded-3 shadow-sm border mb-2">
+                <h6 class="fw-bold text-dark border-bottom pb-1 mb-2 fs-6"><i class="bi bi-geo-alt-fill me-2 text-secondary"></i>2. ข้อมูลเส้นทาง</h6>
+                <div class="row g-2">
+                  <div class="col-sm-6"><label class="form-label fw-bold small text-muted mb-0">Booking No. <span class="text-danger">*</span></label><input type="text" id="booking" class="form-control form-control-sm fw-bold text-primary border-start border-3 border-primary"></div>
+                  <div class="col-sm-6"><label class="form-label fw-bold small text-muted mb-0">สถานที่บรรจุ (Load) <span class="text-danger">*</span></label><input type="text" id="loadPlace" list="loadPlaceList" class="form-control form-control-sm border-start border-3 border-primary"></div>
+                  <div class="col-sm-4"><label class="form-label fw-bold small text-muted mb-0">Mode</label><select id="mode" class="form-select form-select-sm bg-light"><option value="BKK">BKK</option><option value="LCB">LCB</option><option value="Export/BKK" selected>Export/BKK</option><option value="Export/LCB">Export/LCB</option><option value="Import/BKK">Import/BKK</option><option value="Import/LCB">Import/LCB</option></select></div>
+                  <div class="col-sm-4"><label class="form-label fw-bold small text-muted mb-0">วันที่เข้าโรงงาน</label><input type="date" id="date" class="form-control form-control-sm bg-light"></div>
+                  <div class="col-sm-4"><label class="form-label fw-bold small text-muted mb-0">Closing Time</label><input type="text" id="closing" class="form-control form-control-sm bg-light datetime-24h"></div>
+                </div>
+              </div>
+              <div class="bg-white p-2 px-3 rounded-3 shadow-sm border">
+                <h6 class="fw-bold text-dark border-bottom pb-1 mb-2 fs-6"><i class="bi bi-arrow-left-right me-2 text-secondary"></i>3. การรับ/คืนตู้</h6>
+                <div class="row g-2">
+                  <div class="col-sm-3"><label class="form-label fw-bold small text-muted mb-0">CY (รับตู้)</label><input type="text" id="defCyPlace" list="cyPlaceList" class="form-control form-control-sm bg-light"></div>
+                  <div class="col-sm-3"><label class="form-label fw-bold small text-muted mb-0">CY Date</label><input type="date" id="defCyDate" class="form-control form-control-sm bg-light"></div>
+                  <div class="col-sm-3"><label class="form-label fw-bold small text-muted mb-0">RTN (คืนตู้)</label><input type="text" id="defRtnPlace" list="rtnPlaceList" class="form-control form-control-sm bg-light"></div>
+                  <div class="col-sm-3"><label class="form-label fw-bold small text-muted mb-0">RTN Date</label><input type="date" id="defRtnDate" class="form-control form-control-sm bg-light"></div>
+                  <div class="col-12 m-0"><hr class="opacity-10 my-1"></div>
+                  <div class="col-sm-4"><label class="form-label fw-bold small text-muted mb-0">VGM</label><input type="text" id="vgm" class="form-control form-control-sm bg-light"></div>
+                  <div class="col-sm-4"><label class="form-label fw-bold small text-muted mb-0">Agent</label><div class="input-group input-group-sm"><input type="text" id="agent" list="agentDataList" class="form-control bg-light"><button class="btn btn-outline-secondary" type="button" onclick="addNewSetting('AGENT')"><i class="bi bi-plus-lg"></i></button></div></div>
+                  <div class="col-sm-4"><label class="form-label fw-bold small text-muted mb-0">CS</label><input type="text" id="cs" class="form-control form-control-sm bg-light text-muted fw-bold" readonly></div>
+                </div>
+              </div>
             </div>
-            <div class="table-responsive bg-white border rounded" style="max-height: 40vh;">
-                <table class="table table-hover table-bordered mb-0 align-middle table-sm text-nowrap" style="font-size: 13px;">
-                    <thead class="table-light sticky-top">
-                        <tr>
-                            <th>ชื่อย่อ (Short Name)</th>
-                            <th>ชื่อเต็ม (Full Name)</th>
-                            <th>Tax ID</th>
-                            <th>เครดิต</th>
-                            <th class="text-center">จัดการ</th>
-                        </tr>
-                    </thead>
-                    <tbody id="customerTableBody"></tbody>
-                </table>
+            <div class="col-lg-6 d-flex flex-column">
+              <div class="bg-white p-2 px-3 rounded-3 shadow-sm border mb-2">
+                <h6 class="fw-bold text-dark border-bottom pb-1 mb-2 fs-6"><i class="bi bi-box-seam me-2 text-secondary"></i>4. กำหนดจำนวนตู้</h6>
+                <div class="row g-2 align-items-end">
+                  <div class="col-3"><label class="form-label fw-bold small text-muted mb-0">จำนวน 20'</label><input type="number" id="qty20" class="form-control form-control-sm text-center" value="0" min="0"></div>
+                  <div class="col-3"><label class="form-label fw-bold small text-muted mb-0">ราคา 20'</label><input type="number" id="manualPrice20" class="form-control form-control-sm text-end"></div>
+                  <div class="col-3"><label class="form-label fw-bold small text-muted mb-0">จำนวน 40'</label><input type="number" id="qty40" class="form-control form-control-sm text-center" value="0" min="0"></div>
+                  <div class="col-3"><label class="form-label fw-bold small text-muted mb-0">ราคา 40'</label><input type="number" id="manualPrice40" class="form-control form-control-sm text-end"></div>
+                  <div class="col-12 mt-2"><button class="btn btn-dark btn-sm w-100 fw-bold" onclick="generateRows()"><i class="bi bi-list-check me-1"></i> สร้างรายการตู้</button></div>
+                </div>
+              </div>
+              <div class="bg-white p-2 px-3 rounded-3 shadow-sm border flex-grow-1 d-flex flex-column" style="min-height: 250px;">
+                <div class="d-flex justify-content-between align-items-center mb-1 border-bottom pb-1">
+                  <h6 class="fw-bold text-dark m-0 fs-6"><i class="bi bi-card-list me-2 text-secondary"></i>รายละเอียดตู้ย่อย</h6>
+                  <span class="badge bg-danger bg-opacity-10 text-danger border border-danger fw-normal">* ทะเบียน/เบอร์ตู้ จำเป็นเมื่อจัดรถ</span>
+                </div>
+                <div id="container-rows" class="custom-scroll flex-grow-1 pe-1 mt-1" style="height: 0; overflow-y: auto;">
+                  <div class="text-center py-4 text-muted h-100 d-flex flex-column justify-content-center align-items-center">
+                    <i class="bi bi-inbox fs-2 mb-1 opacity-25"></i><span class="small fw-medium">กรุณาระบุจำนวนตู้และกด "สร้างรายการตู้"</span>
+                  </div>
+                </div>
+              </div>
             </div>
+          </div>
         </div>
-
-      </div>
-      <div class="modal-footer bg-white border-top-0 pt-0 pb-3">
-        <button type="button" class="btn btn-light border rounded-pill px-4 w-100 w-md-auto" data-bs-dismiss="modal">ปิดหน้าต่าง</button>
+        <div class="modal-footer bg-light border-top py-2">
+          <button type="button" class="btn btn-secondary btn-sm px-4 fw-bold" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="button" class="btn btn-primary btn-sm px-5 fw-bold" onclick="saveData()"><i class="bi bi-floppy-fill me-1"></i> บันทึก BKG</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="script.js"></script>
+  <div class="modal fade" id="editModal" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style="max-width: 1300px; width: 95%;">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header text-white bg-dark py-2">
+          <h6 class="modal-title fw-bold m-0"><i class="bi bi-gear-fill me-2"></i>รายละเอียดตู้ <span id="eTitleBkg" class="text-warning"></span></h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body bg-light p-3">
+          <input type="hidden" id="eRowIndex">
+          <div class="row g-3">
+            <div class="col-lg-7">
+              <div class="bg-white p-2 px-3 rounded-3 shadow-sm border mb-2">
+                <h6 class="fw-bold text-dark border-bottom pb-1 mb-2 fs-6"><i class="bi bi-person-lines-fill me-2 text-secondary"></i>1. ข้อมูลทั่วไป</h6>
+                <div class="row g-2">
+                  <div class="col-sm-4"><label class="form-label fw-bold small text-muted mb-0">วันที่เข้าโรงงาน</label><input type="date" id="eDate" class="form-control form-control-sm bg-light" onchange="autoCalcEditPrice()"></div>
+                  <div class="col-sm-4"><label class="form-label fw-bold small text-muted mb-0">CS <i class="bi bi-lock-fill text-black-50"></i></label><input type="text" id="eCS" class="form-control form-control-sm bg-light text-primary fw-bold" readonly></div>
+                  <div class="col-sm-4"><label class="form-label fw-bold small text-muted mb-0">Agent</label><div class="input-group input-group-sm"><input type="text" id="eAgent" list="agentDataList" class="form-control bg-light"><button class="btn btn-outline-secondary" type="button" onclick="addNewSetting('AGENT')"><i class="bi bi-plus-lg"></i></button></div></div>
+                  <div class="col-sm-4"><label class="form-label fw-bold small text-muted mb-0">Customer</label><input type="text" id="eCustomer" list="customerList" class="form-control form-control-sm" onchange="autoCalcEditPrice(); autoFillBillingNamesEdit(); mapToFullName(this);"></div>
+                  <div class="col-sm-4"><label class="form-label fw-bold small text-muted mb-0">ลูกค้าวางบิล</label><input type="text" id="eBillTo" list="companyList" class="form-control form-control-sm bg-light" onchange="mapToFullName(this)"></div>
+                  <div class="col-sm-4"><label class="form-label fw-bold small text-muted mb-0">ชื่อออกใบเสร็จ</label><input type="text" id="eReceiptName" list="companyList" class="form-control form-control-sm bg-light" onchange="mapToFullName(this)"></div>
+                </div>
+              </div>
+              <div class="bg-white p-2 px-3 rounded-3 shadow-sm border">
+                <h6 class="fw-bold text-dark border-bottom pb-1 mb-2 fs-6"><i class="bi bi-geo-alt-fill me-2 text-secondary"></i>2. ข้อมูลเส้นทาง</h6>
+                <div class="row g-2">
+                  <div class="col-sm-4"><label class="form-label fw-bold small text-muted mb-0">Booking No.</label><input type="text" id="eBooking" class="form-control form-control-sm fw-bold text-primary bg-light" readonly></div>
+                  <div class="col-sm-4"><label class="form-label fw-bold small text-muted mb-0">เบอร์ตู้ <span class="text-danger">*</span></label><input type="text" id="eContainerNo" class="form-control form-control-sm fw-bold text-primary border-start border-3 border-primary"></div>
+                  <div class="col-sm-2"><label class="form-label fw-bold small text-muted mb-0">ประเภท</label><input type="text" id="eType" class="form-control form-control-sm text-center" onchange="autoCalcEditPrice()"></div>
+                  <div class="col-sm-2"><label class="form-label fw-bold small text-muted mb-0">Mode</label><select id="eMode" class="form-select form-select-sm" onchange="autoCalcEditPrice()"><option value="BKK">BKK</option><option value="LCB">LCB</option><option value="Export/BKK">Export/BKK</option><option value="Export/LCB">Export/LCB</option><option value="Import/BKK">Import/BKK</option><option value="Import/LCB">Import/LCB</option></select></div>
+                  <div class="col-12 m-0"><hr class="opacity-10 my-1"></div>
+                  <div class="col-sm-4"><label class="form-label fw-bold small text-muted mb-0">สถานที่ (Load)</label><input type="text" id="eLoad" list="loadPlaceList" class="form-control form-control-sm" onchange="autoCalcEditPrice()"></div>
+                  <div class="col-sm-4"><label class="form-label fw-bold small text-muted mb-0">Closing Time</label><input type="text" id="eClosing" class="form-control form-control-sm bg-light datetime-24h"></div>
+                  <div class="col-sm-4"><label class="form-label fw-bold small text-muted mb-0">VGM</label><input type="text" id="eVGM" class="form-control form-control-sm bg-light"></div>
+                  <div class="col-12 m-0"><hr class="opacity-10 my-1"></div>
+                  <div class="col-sm-3"><label class="form-label fw-bold small text-muted mb-0">CY Place</label><input type="text" id="eCyP" list="cyPlaceList" class="form-control form-control-sm bg-light" onchange="autoCalcEditPrice()"></div>
+                  <div class="col-sm-3"><label class="form-label fw-bold small text-muted mb-0">CY Date</label><input type="date" id="eCyD" class="form-control form-control-sm bg-light"></div>
+                  <div class="col-sm-3"><label class="form-label fw-bold small text-muted mb-0">RTN Place</label><input type="text" id="eRtnP" list="rtnPlaceList" class="form-control form-control-sm bg-light" onchange="autoCalcEditPrice()"></div>
+                  <div class="col-sm-3"><label class="form-label fw-bold small text-muted mb-0">RTN Date</label><input type="date" id="eRtnD" class="form-control form-control-sm bg-light"></div>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-5 d-flex flex-column">
+              <div class="bg-white p-2 px-3 rounded-3 shadow-sm border mb-2 border-start border-4" style="border-left-color: #10b981 !important;">
+                <h6 class="fw-bold text-dark border-bottom pb-1 mb-2 fs-6"><i class="bi bi-truck me-2 text-success"></i>3. สถานะการวิ่งงาน</h6>
+                <div class="row g-2">
+                  <div class="col-sm-6"><label class="form-label fw-bold text-success small mb-0">สถานะงาน</label><select id="eTruckStatus" class="form-select form-select-sm border-success fw-bold text-success bg-success bg-opacity-10"><option value="รอจัดรถ">รอจัดรถ</option><option value="จัดรถแล้ว">จัดรถแล้ว</option><option value="กำลังไปรับตู้">กำลังไปรับตู้</option><option value="ดรอปตู้ (รอบรรจุ)">ดรอปตู้ (รอบรรจุ)</option><option value="กำลังบรรจุ/เปิดตู้">กำลังบรรจุ/เปิดตู้</option><option value="ดรอปตู้ (รอคืน)">ดรอปตู้ (รอคืน)</option><option value="กำลังไปคืนตู้">กำลังไปคืนตู้</option><option value="คืนตู้แล้ว">คืนตู้แล้ว</option><option value="จบงานรอวางบิล">จบงานรอวางบิล</option><option value="พร้อมวางบิล" disabled>พร้อมวางบิล</option><option value="วางบิลแล้ว" disabled>วางบิลแล้ว</option></select></div>
+                  <div class="col-sm-6"><label class="form-label fw-bold text-success small mb-0">ทะเบียนรถ <span class="text-danger">*</span></label><input type="text" id="eTruckPlate" class="form-control form-control-sm border-success fw-bold" oninput="if(this.value && document.getElementById('eTruckStatus').value === 'รอจัดรถ') document.getElementById('eTruckStatus').value = 'จัดรถแล้ว';"></div>
+                  <div class="col-12 mt-1"><label class="form-label fw-bold small text-muted mb-0">หมายเหตุ</label><input type="text" id="eComment" class="form-control form-control-sm"></div>
+                  <div class="col-12 mt-1" id="editLogSection" style="display: none;"><div class="p-1 bg-danger bg-opacity-10 border border-danger rounded"><label class="fw-bold text-danger small mb-0"><i class="bi bi-exclamation-circle me-1"></i> ประวัติแก้จากบัญชี</label><textarea id="eEditLog" class="form-control form-control-sm bg-white text-danger" rows="1" readonly></textarea></div></div>
+                </div>
+              </div>
+              <div class="bg-white p-2 px-3 rounded-3 shadow-sm border flex-grow-1">
+                <div class="d-flex justify-content-between align-items-end border-bottom pb-1 mb-2">
+                  <h6 class="fw-bold text-dark m-0 fs-6"><i class="bi bi-cash-stack me-2 text-primary"></i>4. การเงิน</h6>
+                  <span class="small text-muted">เลขที่บิล: <span id="eInvoiceNo" class="fw-bold text-primary"></span></span>
+                </div>
+                <div class="row g-2 mb-2">
+                  <div class="col-12">
+                    <div class="d-flex justify-content-between align-items-end mb-1">
+                      <label class="form-label fw-bold text-primary small m-0">ราคา/ตู้</label>
+                      <a href="javascript:void(0)" onclick="updatePriceEntireBooking()" class="badge bg-primary text-decoration-none shadow-sm"><i class="bi bi-arrow-clockwise"></i> อัปเดตทั้ง BKG</a>
+                    </div>
+                    <div class="input-group input-group-sm"><span class="input-group-text bg-light">฿</span><input type="number" id="ePrice" class="form-control form-control-sm border-primary fw-bold text-primary text-end"></div>
+                  </div>
+                </div>
+                <label class="form-label fw-bold text-secondary small mb-1 border-bottom border-light w-100 pb-1">ค่าใช้จ่ายเพิ่มเติม (สำรองจ่าย / หักเพิ่ม)</label>
+                <div class="row g-2">
+                  <div class="col-4"><label class="small text-muted mb-0">ค่ารับตู้</label><input type="number" id="eExp1" class="form-control form-control-sm text-end"></div>
+                  <div class="col-4"><label class="small text-muted mb-0">ค่าคืนตู้</label><input type="number" id="eExp2" class="form-control form-control-sm text-end"></div>
+                  <div class="col-4"><label class="small text-muted mb-0">ต่อระยะ</label><input type="number" id="eExp3" class="form-control form-control-sm text-end"></div>
+                  <div class="col-4"><label class="small text-muted mb-0">ค้างหาง</label><input type="number" id="eExp4" class="form-control form-control-sm text-end"></div>
+                  <div class="col-4"><label class="small text-muted mb-0">เสียเวลา</label><input type="number" id="eExp5" class="form-control form-control-sm text-end"></div>
+                  <div class="col-4"><label class="small text-info fw-bold mb-0">ผ่านท่า/ลาน</label><input type="number" id="eExp6" class="form-control form-control-sm border-info text-end bg-info bg-opacity-10"></div>
+                  <div class="col-4"><label class="small text-info fw-bold mb-0">ซ่อมตู้</label><input type="number" id="eExp7" class="form-control form-control-sm border-info text-end bg-info bg-opacity-10"></div>
+                  <div class="col-4"><label class="small text-info fw-bold mb-0">ล้างตู้</label><input type="number" id="eExp8" class="form-control form-control-sm border-info text-end bg-info bg-opacity-10"></div>
+                  <div class="col-4"><label class="small text-danger fw-bold mb-0">ค่าชอ (Shore)</label><input type="number" id="eExp9" class="form-control form-control-sm border-danger text-end bg-danger bg-opacity-10"></div>
+                  <div class="col-12 m-0"><hr class="opacity-10 my-1"></div>
+                  <div class="col-8"><label class="small text-muted mb-0">ชื่อค่าใช้จ่ายอื่น 1</label><input type="text" id="eExp10Name" class="form-control form-control-sm bg-light"></div>
+                  <div class="col-4"><label class="small text-muted mb-0">ยอด 1</label><input type="number" id="eExp10Val" class="form-control form-control-sm text-end bg-light"></div>
+                  <div class="col-8"><label class="small text-muted mb-0">ชื่อค่าใช้จ่ายอื่น 2</label><input type="text" id="eExp11Name" class="form-control form-control-sm bg-light"></div>
+                  <div class="col-4"><label class="small text-muted mb-0">ยอด 2</label><input type="number" id="eExp11Val" class="form-control form-control-sm text-end bg-light"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-between bg-white border-top py-2 mt-2">
+          <div class="d-flex gap-2">
+            <button type="button" id="btnDeleteSingle" class="btn btn-outline-danger btn-sm rounded-pill fw-bold px-3 shadow-sm" onclick="deleteSingle()"><i class="bi bi-trash3-fill"></i> ลบตู้นี้</button>
+            <button type="button" id="btnFinishBooking" class="btn btn-outline-success btn-sm rounded-pill fw-bold px-3 shadow-sm" onclick="finishEntireBooking()"><i class="bi bi-check2-all"></i> จบงานทั้ง BKG</button>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-secondary btn-sm rounded-pill px-4 fw-bold shadow-sm" data-bs-dismiss="modal">ยกเลิก</button>
+            <button type="button" id="btnSaveEdit" class="btn btn-primary btn-sm px-4 rounded-pill fw-bold shadow-sm" onclick="saveEdit()"><i class="bi bi-floppy-fill"></i> บันทึก</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
+  <div class="modal fade" id="batchTruckModal" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content border-0">
+        <div class="modal-header bg-success text-white py-2">
+          <h6 class="modal-title fw-bold m-0"><i class="bi bi-truck-flatbed"></i> จัดการรถ (Batch)</h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body bg-light p-3">
+          <div class="alert alert-success d-flex justify-content-between align-items-center py-2 px-3 shadow-sm border-0 mb-2">
+            <div><span class="fw-bold">รอจัดรถทั้งหมด: <span id="batchCount" class="badge bg-success fs-6 rounded-pill">0</span> ใบ</span></div>
+            <div class="d-flex gap-2">
+              <select id="batchCsFilter" class="form-select form-select-sm text-success fw-bold" onchange="renderBatchTruckTable()"><option value="">- ทุก CS -</option></select>
+              <input type="date" id="batchDateFilter" class="form-control form-control-sm" onchange="renderBatchTruckTable()">
+            </div>
+          </div>
+          <div class="table-responsive bg-white rounded shadow-sm border">
+            <table class="table table-bordered align-middle mb-0 text-nowrap table-sm">
+              <thead style="background-color: #10b981; color: white;">
+                <tr><th>วันที่</th><th>BKG / CS / ลูกค้า</th><th class="text-center">ประเภท</th><th>สถานที่</th><th class="text-center">สถานะ</th><th>ทะเบียนรถ</th><th>เบอร์ตู้</th></tr>
+              </thead>
+              <tbody id="batchTruckBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer bg-white py-2">
+          <button type="button" class="btn btn-light btn-sm border rounded-pill px-3" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="button" class="btn btn-success btn-sm px-4 fw-bold rounded-pill" onclick="saveBatchTruckMulti()"><i class="bi bi-floppy-fill"></i> บันทึก</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="pricingMasterModal" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header text-dark py-2" style="background-color: #fcd34d;">
+          <h6 class="modal-title fw-bold m-0"><i class="bi bi-cash-coin"></i> จัดการราคาน้ำมัน</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body bg-light p-3">
+          <div class="card p-2 border-0 shadow-sm mb-2">
+            <div class="row g-2 align-items-end">
+              <div class="col-4"><label class="fw-bold small">วันที่มีผล</label><input type="date" id="newFuelDate" class="form-control form-control-sm"></div>
+              <div class="col-5"><label class="fw-bold small">ราคา (บาท)</label><input type="number" id="newFuelPrice" class="form-control form-control-sm border-warning"></div>
+              <div class="col-3"><button class="btn btn-warning btn-sm fw-bold w-100" onclick="saveFuelLog()">บันทึก</button></div>
+            </div>
+          </div>
+          <div class="card p-2 border-0 shadow-sm">
+            <div class="d-flex justify-content-between mb-2">
+              <h6 class="fw-bold text-secondary m-0 fs-6">ประวัติ</h6>
+              <div class="d-flex gap-2">
+                <select id="fuelMonthFilter" class="form-select form-select-sm" onchange="renderFuelHistory()"><option value="">เดือน</option><option value="0">ม.ค.</option><option value="1">ก.พ.</option><option value="2">มี.ค.</option><option value="3">เม.ย.</option><option value="4">พ.ค.</option><option value="5">มิ.ย.</option><option value="6">ก.ค.</option><option value="7">ส.ค.</option><option value="8">ก.ย.</option><option value="9">ต.ค.</option><option value="10">พ.ย.</option><option value="11">ธ.ค.</option></select>
+                <select id="fuelYearFilter" class="form-select form-select-sm" onchange="renderFuelHistory()"><option value="">ปี</option></select>
+              </div>
+            </div>
+            <table class="table table-hover table-bordered table-sm text-center mb-0">
+              <thead class="table-light"><tr><th>วันที่มีผล</th><th>ราคา</th><th>จัดการ</th></tr></thead>
+              <tbody id="fuelHistoryBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer bg-white py-2">
+          <button type="button" class="btn btn-light btn-sm border rounded-pill px-4" data-bs-dismiss="modal">ปิด</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="customerModal" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header text-white bg-primary py-2">
+          <h6 class="modal-title fw-bold m-0"><i class="bi bi-people-fill"></i> จัดการลูกค้า</h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body bg-light p-3">
+          <div class="card p-2 border-0 shadow-sm mb-2">
+            <div class="row g-2 align-items-end">
+              <div class="col-3"><label class="fw-bold small">ชื่อย่อ <span class="text-danger">*</span></label><input type="text" id="newCustShort" class="form-control form-control-sm"></div>
+              <div class="col-9"><label class="fw-bold small">ชื่อเต็ม</label><input type="text" id="newCustFull" class="form-control form-control-sm"></div>
+              <div class="col-12"><label class="fw-bold small">ที่อยู่</label><input type="text" id="newCustAddress" class="form-control form-control-sm"></div>
+              <div class="col-4"><label class="fw-bold small">Tax ID</label><input type="text" id="newCustTax" class="form-control form-control-sm"></div>
+              <div class="col-3"><label class="fw-bold small">เครดิต (วัน)</label><input type="number" id="newCustCredit" class="form-control form-control-sm"></div>
+              <div class="col-5"><label class="fw-bold small">หมายเหตุ</label><input type="text" id="newCustRemark" class="form-control form-control-sm"></div>
+              <div class="col-12 text-end mt-2"><button class="btn btn-primary btn-sm fw-bold px-4" onclick="addCustomerRecordJS()">บันทึก</button></div>
+            </div>
+          </div>
+          <div class="card p-2 border-0 shadow-sm">
+            <div class="d-flex justify-content-between mb-2">
+              <h6 class="fw-bold m-0 fs-6">รายชื่อลูกค้า</h6>
+              <input type="text" id="searchCustomer" class="form-control form-control-sm w-auto" placeholder="ค้นหา..." onkeyup="debouncedRenderCustomerTable()">
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover table-bordered table-sm text-nowrap mb-0">
+                <thead class="table-light"><tr><th>ชื่อย่อ</th><th>ชื่อเต็ม</th><th>Tax ID</th><th>เครดิต</th><th class="text-center">จัดการ</th></tr></thead>
+                <tbody id="customerTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-white py-2">
+          <button type="button" class="btn btn-light btn-sm border rounded-pill px-4" data-bs-dismiss="modal">ปิด</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="logModal">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-info text-white py-2">
+          <h6 class="modal-title fw-bold m-0"><i class="bi bi-clock-history"></i> ประวัติระบบ</h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body bg-light p-3">
+          <div class="table-responsive bg-white rounded shadow-sm border">
+            <table class="table table-bordered table-striped mb-0 text-nowrap table-sm">
+              <thead class="bg-info text-white sticky-top"><tr><th>วัน-เวลา</th><th>ผู้ใช้</th><th>การทำงาน</th><th>รายละเอียด</th></tr></thead>
+              <tbody id="logTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer bg-white py-2">
+          <button type="button" class="btn btn-light btn-sm border rounded-pill px-4" data-bs-dismiss="modal">ปิด</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="deleteBookingModal">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-danger text-white py-2">
+          <h6 class="modal-title fw-bold m-0"><i class="bi bi-trash3-fill"></i> จัดการลบ Booking</h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body bg-light p-3">
+          <input type="text" id="searchDeleteModal" class="form-control form-control-sm border-danger mb-2" placeholder="ค้นหา Booking..." onkeyup="debouncedFilterDeleteModal()">
+          <div class="table-responsive bg-white rounded shadow-sm border">
+            <table class="table table-bordered table-hover align-middle mb-0 text-nowrap table-sm">
+              <thead class="table-light sticky-top"><tr><th>Booking No.</th><th>ลูกค้า</th><th class="text-center">จำนวนตู้</th><th>สถานะงาน</th><th class="text-center">จัดการ</th></tr></thead>
+              <tbody id="deleteBookingBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer bg-white py-2">
+          <button type="button" class="btn btn-light btn-sm border rounded-pill px-4" data-bs-dismiss="modal">ปิด</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="invoiceSettingModal" data-bs-backdrop="static" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-primary text-white py-2">
+          <h6 class="modal-title fw-bold mb-0"><i class="bi bi-printer-fill me-2"></i>ตั้งค่าใบแจ้งหนี้</h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body bg-light p-3">
+          <div class="card border-0 shadow-sm mb-2 p-2">
+            <label class="fw-semibold text-secondary mb-1 small">ออกเอกสารในนาม</label>
+            <input type="text" id="modBillToName" list="modalCompanyList" class="form-control form-control-sm fw-bold bg-white">
+            <div class="d-flex justify-content-between mt-2 pt-1 border-top">
+              <span class="small">รายการ: <span id="modCount" class="badge bg-primary rounded-pill">0</span></span>
+              <span class="small">ยอดเงิน: <span id="modTotal" class="text-primary fw-bold">฿0.00</span></span>
+            </div>
+          </div>
+          <div class="mb-2">
+            <label class="fw-semibold text-secondary mb-1 small">วันที่ลงเอกสาร</label>
+            <input type="date" id="modInvoiceDate" class="form-control form-control-sm fw-bold bg-white">
+          </div>
+          <div class="mb-2">
+            <label class="fw-semibold text-secondary mb-1 small">อ้างอิงเลขบิลเดิม (กรณีแก้ไข)</label>
+            <input type="text" id="modCustomInvNo" class="form-control form-control-sm fw-bold text-primary bg-white" placeholder="สร้างอัตโนมัติ">
+          </div>
+          <div class="card border-0 shadow-sm p-2 d-flex flex-row justify-content-between align-items-center" onclick="document.getElementById('modSplitInvoice').click()">
+            <div><h6 class="fw-bold mb-0 fs-6">แยกบิล 2 ใบ</h6><small class="text-muted">แยกค่าขนส่ง และ สำรองจ่าย</small></div>
+            <div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" id="modSplitInvoice" onclick="event.stopPropagation();"></div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light py-2">
+          <button type="button" class="btn btn-white btn-sm border rounded-pill px-3" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="button" class="btn btn-primary btn-sm rounded-pill px-4 fw-bold" onclick="confirmGeneratePDF()">ยืนยันสร้างเอกสาร</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="editInvoiceModal" data-bs-backdrop="static" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-dark text-white py-2">
+          <h6 class="modal-title fw-bold mb-0"><i class="bi bi-pencil-square me-2"></i>แก้ไขข้อมูลบิลโดยตรง</h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body bg-light p-3">
+          <div class="card border-0 shadow-sm mb-2 p-2">
+            <div class="row g-2">
+              <div class="col-md-3"><label class="small text-muted fw-semibold mb-0">เลขที่บิล</label><input type="text" id="editInvNo" class="form-control form-control-sm fw-bold bg-light" readonly></div>
+              <div class="col-md-3"><label class="small text-muted fw-semibold mb-0">วันที่</label><input type="date" id="editInvDate" class="form-control form-control-sm fw-bold"></div>
+              <div class="col-md-4"><label class="small text-muted fw-semibold mb-0">ลูกค้า</label><input type="text" id="editCustomer" class="form-control form-control-sm fw-bold"></div>
+              <div class="col-md-2 d-flex align-items-end"><div class="form-check form-switch m-0 mb-1"><input class="form-check-input" type="checkbox" id="editIsSplit"><label class="small fw-bold ms-1">แยกบิล</label></div></div>
+            </div>
+          </div>
+          <div id="editItemsContainer"></div>
+        </div>
+        <div class="modal-footer bg-light border-top py-2">
+          <button type="button" class="btn btn-white btn-sm border rounded-pill px-4" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="button" class="btn btn-dark btn-sm rounded-pill px-4 fw-bold" onclick="confirmEditInvoice()"><i class="bi bi-save me-1"></i> บันทึกและสร้าง PDF ใหม่</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="receiptSettingModal" data-bs-backdrop="static" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div id="recModalHeader" class="modal-header bg-success text-white py-2">
+          <h6 class="modal-title fw-bold mb-0"><i id="recModalIcon" class="bi bi-receipt-cutoff me-2"></i><span id="recModalTitleText">ออกเอกสาร</span></h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body bg-light p-3">
+          <div class="card border-0 shadow-sm mb-2 p-2 text-center">
+            <div class="text-secondary small fw-bold">อ้างอิงใบแจ้งหนี้</div>
+            <div id="recInvoiceNoLabel" class="fw-bold text-dark fs-5">INV...</div>
+            <div id="recModalInfo" class="small mt-1 pt-1 border-top"></div>
+          </div>
+          <div class="mb-2">
+            <label class="small text-muted fw-semibold mb-1">วันที่เอกสาร</label>
+            <input type="date" id="modReceiptDate" class="form-control form-control-sm fw-bold bg-white">
+          </div>
+          <div class="card border-0 shadow-sm mb-2 p-2 d-flex flex-row justify-content-between align-items-center" onclick="document.getElementById('recShowDueDate').click()">
+            <div><h6 class="fw-bold mb-0 fs-6">แสดงกำหนดชำระเงิน</h6></div>
+            <div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" id="recShowDueDate" checked onclick="event.stopPropagation();"></div>
+          </div>
+          <label class="small text-muted fw-semibold mb-1">รูปแบบตารางรายการ</label>
+          <div class="list-group shadow-sm">
+            <label class="list-group-item d-flex gap-3 py-2">
+              <input class="form-check-input flex-shrink-0 mt-1" type="radio" name="recMode" id="recModeDetail" value="DETAIL" checked>
+              <span><strong class="d-block small">แบบแจกแจงรายการ (Detailed)</strong></span>
+            </label>
+            <label class="list-group-item d-flex gap-3 py-2">
+              <input class="form-check-input flex-shrink-0 mt-1" type="radio" name="recMode" id="recModeSum" value="SUMMARY">
+              <span><strong class="d-block small">แบบสรุปยอดเหมา (Summarized)</strong></span>
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer bg-light py-2">
+          <button type="button" class="btn btn-white btn-sm border rounded-pill px-3" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="button" class="btn btn-success btn-sm rounded-pill px-4 fw-bold" id="btnConfirmReceipt" onclick="confirmGenerateReceipt()"><span id="btnConfirmReceiptText">สร้างเอกสาร</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="invoice.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
